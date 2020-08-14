@@ -1,0 +1,15 @@
+# .goreleaser.yml
+builds:
+  - binary: terraform-plugin-exasol
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - format: binary
