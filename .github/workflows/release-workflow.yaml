@@ -21,6 +21,6 @@ jobs:
         with:
           version: latest
           args: release --rm-dist
-          workdir: cmd/terraform-plugin-exasol
+          workdir: cmd/terraform-provider-exasol
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

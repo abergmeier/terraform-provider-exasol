@@ -15,4 +15,4 @@ jobs:
           go-version: 1.14
       - name: Build tool
         run: |
-          set -x && pushd cmd/terraform-plugin-exasol >/dev/null && go build
+          set -x && pushd cmd/terraform-provider-exasol >/dev/null && go build

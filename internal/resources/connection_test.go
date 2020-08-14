@@ -3,6 +3,7 @@ package resources
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 
 	"github.com/abergmeier/terraform-exasol/internal"
@@ -40,8 +41,12 @@ func TestCreateConnection(t *testing.T) {
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
-
 	defer deleteConnectionData(d, exaClient)
+
+	if d.Id() != strings.ToUpper(name) {
+		t.Fatal("Unexpected id:", d.Id())
+	}
+
 }
 
 func TestDeleteConnection(t *testing.T) {

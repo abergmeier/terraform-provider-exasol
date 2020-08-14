@@ -1,6 +1,6 @@
 # .goreleaser.yml
 builds:
-  - binary: terraform-plugin-exasol
+  - binary: terraform-provider-exasol
     env:
       - CGO_ENABLED=0
     goos:

@@ -1,6 +1,6 @@
 resource "exa_connection" "dummy" {
-    name     = "dummy"
+    name     = "singleinstance"
     to       = "192.168.1.1"
-    username = "foo"
-    password = "bar"
+    username = "sys"
+    password = "exasol"
 }

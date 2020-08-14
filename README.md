@@ -6,3 +6,11 @@ Prototype implementation of Plugin for EXASOL.
 
 Currently supports:
 - Connections
+
+## Testing
+
+To test call
+
+```
+EXAHOST=<exasolserver> scripts/test.sh.
+```

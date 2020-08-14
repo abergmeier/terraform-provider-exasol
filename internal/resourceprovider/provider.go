@@ -12,10 +12,10 @@ import (
 func Provider() terraform.ResourceProvider {
 	provider := &schema.Provider{
 		DataSourcesMap: map[string]*schema.Resource{
-			"exa_connection": resources.DataSourceExaConnection(),
+			"exasol_connection": resources.DataSourceExaConnection(),
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"exa_connection": resources.ResourceExaConnection(),
+			"exasol_connection": resources.ResourceExaConnection(),
 		},
 		Schema: map[string]*schema.Schema{
 			"username": {
@@ -31,6 +31,7 @@ func Provider() terraform.ResourceProvider {
 			},
 			"ip": {
 				Type:        schema.TypeString,
+				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("EXAHOST", nil),
 			},
 		},

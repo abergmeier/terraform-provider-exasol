@@ -3,6 +3,7 @@ package resources
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/abergmeier/terraform-exasol/internal"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
@@ -12,10 +13,14 @@ import (
 func DataSourceExaConnection() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
+			"name": {
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "Name of connection",
+			},
 			"to": {
 				Type:        schema.TypeString,
-				Optional:    false,
-				Default:     "",
+				Required:    true,
 				Description: "Where connection points to",
 			},
 			"username": {
@@ -39,10 +44,14 @@ func DataSourceExaConnection() *schema.Resource {
 func ResourceExaConnection() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
+			"name": {
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "Name of connection",
+			},
 			"to": {
 				Type:        schema.TypeString,
-				Optional:    false,
-				Default:     "",
+				Required:    true,
 				Description: "Where connection points to",
 			},
 			"username": {
@@ -125,19 +134,21 @@ func createConnectionData(d internal.Data, c *exaprovider.Client) error {
 
 	if user == "" {
 		stmt := fmt.Sprintf("CREATE CONNECTION %s TO '%s'", name, to)
-		_, err := c.Conn.Execute(stmt)
-		return err
-	}
-
-	if identifiedBy == "" {
+		_, err = c.Conn.Execute(stmt)
+	} else if identifiedBy == "" {
 		stmt := fmt.Sprintf("CREATE CONNECTION %s TO '%s' USER '%s'", name, to, user)
-		_, err := c.Conn.Execute(stmt)
+		_, err = c.Conn.Execute(stmt)
+	} else {
+		stmt := fmt.Sprintf("CREATE CONNECTION %s TO '%s' USER '%s' IDENTIFIED BY '%s'", name, to, user, identifiedBy)
+		_, err = c.Conn.Execute(stmt)
+	}
+
+	if err != nil {
 		return err
 	}
 
-	stmt := fmt.Sprintf("CREATE CONNECTION %s TO '%s' USER '%s' IDENTIFIED BY '%s'", name, to, user, identifiedBy)
-	_, err = c.Conn.Execute(stmt)
-	return err
+	d.SetId(strings.ToUpper(name))
+	return nil
 }
 
 func deleteConnection(d *schema.ResourceData, meta interface{}) error {
