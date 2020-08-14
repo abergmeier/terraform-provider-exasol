@@ -156,7 +156,11 @@ func deleteConnectionData(d internal.Data, c *exaprovider.Client) error {
 	}
 	stmt := fmt.Sprintf("DROP CONNECTION %s", name)
 	_, err = c.Conn.Execute(stmt)
-	return err
+	if err != nil {
+		return err
+	}
+	d.SetId("")
+	return nil
 }
 
 func importConnection(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
