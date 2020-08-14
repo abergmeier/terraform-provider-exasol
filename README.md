@@ -10,6 +10,7 @@ Prototype implementation of Plugin for EXASOL.
 | ---               | ---                    |
 | Connection        | exasol_connection      |
 | Schema (physical) | exasol_physical_schema |
+| Schema (virtual)  | exasol_virtual_schema  |
 
 
 
@@ -17,7 +18,6 @@ Prototype implementation of Plugin for EXASOL.
 | ---              | ---                        |
 | Function         | exasol_function            |
 | Role             | exasol_role                |
-| Schema (virtual) | exasol_virtual_schema      |
 | Script           | exasol_script              |
 | Table            | exasol_table               |
 | User             | exasol_user                |
