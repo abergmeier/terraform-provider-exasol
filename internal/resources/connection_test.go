@@ -2,24 +2,14 @@ package resources
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
 	"testing"
 
 	"github.com/abergmeier/terraform-exasol/internal"
 )
 
-var (
-	r = rand.New(rand.NewSource(3))
-)
-
-func suffix() string {
-	return fmt.Sprintf("%d", r.Uint32())
-}
-
 func TestCreateConnection(t *testing.T) {
-	s := suffix()
-	name := "create" + s
+	name := t.Name()
 	d := &internal.TestData{
 		Values: map[string]interface{}{
 			"name": name,
@@ -50,8 +40,7 @@ func TestCreateConnection(t *testing.T) {
 }
 
 func TestDeleteConnection(t *testing.T) {
-	s := suffix()
-	name := "delete" + s
+	name := t.Name()
 	d := &internal.TestData{
 		Values: map[string]interface{}{
 			"name": name,
@@ -80,8 +69,7 @@ func TestDeleteConnection(t *testing.T) {
 }
 
 func TestExistsConnection(t *testing.T) {
-	s := suffix()
-	name := "exists" + s
+	name := t.Name()
 
 	exists := &internal.TestData{
 		Values: map[string]interface{}{
@@ -122,8 +110,7 @@ func TestExistsConnection(t *testing.T) {
 }
 
 func TestReadConnection(t *testing.T) {
-	s := suffix()
-	name := "read" + s
+	name := t.Name()
 
 	read := &internal.TestData{
 		Values: map[string]interface{}{
@@ -164,8 +151,7 @@ func TestReadConnection(t *testing.T) {
 }
 
 func TestImportConnection(t *testing.T) {
-	s := suffix()
-	name := "import" + s
+	name := t.Name()
 
 	imp := &internal.TestData{
 		Values: map[string]interface{}{
@@ -212,8 +198,7 @@ func TestImportConnection(t *testing.T) {
 }
 
 func TestUpdateConnection(t *testing.T) {
-	s := suffix()
-	name := "update" + s
+	name := t.Name()
 
 	create := &internal.TestData{
 		Values: map[string]interface{}{
