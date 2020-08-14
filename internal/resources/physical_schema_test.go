@@ -16,14 +16,14 @@ func TestCreatePhysicalSchema(t *testing.T) {
 		},
 	}
 
-	deletePhysicalSchemaData(create, exaClient)
+	DeletePhysicalSchemaData(create, exaClient)
 
-	err := createPhysicalSchemaData(create, exaClient)
+	err := CreatePhysicalSchemaData(create, exaClient)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
 
-	defer deletePhysicalSchemaData(create, exaClient)
+	defer DeletePhysicalSchemaData(create, exaClient)
 }
 
 func TestDeletePhysicalSchema(t *testing.T) {
@@ -36,9 +36,9 @@ func TestDeletePhysicalSchema(t *testing.T) {
 	}
 	delete.SetId("foo")
 
-	createPhysicalSchemaData(delete, exaClient)
+	CreatePhysicalSchemaData(delete, exaClient)
 
-	err := deletePhysicalSchemaData(delete, exaClient)
+	err := DeletePhysicalSchemaData(delete, exaClient)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -56,7 +56,7 @@ func TestExistsPhysicalSchema(t *testing.T) {
 		},
 	}
 
-	deletePhysicalSchemaData(exists, exaClient)
+	DeletePhysicalSchemaData(exists, exaClient)
 
 	e, err := existsPhysicalSchemaData(exists, exaClient)
 	if err != nil {
@@ -67,9 +67,9 @@ func TestExistsPhysicalSchema(t *testing.T) {
 		t.Fatal("Expected exists to be false")
 	}
 
-	createPhysicalSchemaData(exists, exaClient)
+	CreatePhysicalSchemaData(exists, exaClient)
 
-	defer deletePhysicalSchemaData(exists, exaClient)
+	defer DeletePhysicalSchemaData(exists, exaClient)
 
 	e, err = existsPhysicalSchemaData(exists, exaClient)
 	if err != nil {
@@ -97,7 +97,7 @@ func TestImportPhysicalSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer deletePhysicalSchemaData(imp, exaClient)
+	defer DeletePhysicalSchemaData(imp, exaClient)
 
 	err = importPhysicalSchemaData(imp, exaClient)
 	if err != nil {
@@ -127,9 +127,9 @@ func TestReadPhysicalSchema(t *testing.T) {
 		},
 	}
 
-	createPhysicalSchemaData(create, exaClient)
+	CreatePhysicalSchemaData(create, exaClient)
 
-	defer deletePhysicalSchemaData(create, exaClient)
+	defer DeletePhysicalSchemaData(create, exaClient)
 
 	err := readPhysicalSchemaData(read, exaClient)
 	if err != nil {

@@ -8,6 +8,7 @@ Prototype implementation of Plugin for EXASOL.
 
 | Supported         | Implemeted as          |
 | ---               | ---                    |
+| Script (adapter)  | exasol_adapter_script  |
 | Connection        | exasol_connection      |
 | Schema (physical) | exasol_physical_schema |
 
