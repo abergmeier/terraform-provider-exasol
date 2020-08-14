@@ -14,10 +14,12 @@ func Provider() terraform.ResourceProvider {
 		DataSourcesMap: map[string]*schema.Resource{
 			"exasol_connection":      resources.DataSourceExaConnection(),
 			"exasol_physical_schema": resources.DataSourceExaPhysicalSchema(),
+			"exasol_virtual_schema":  resources.DataSourceExaVirtualSchema(),
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"exasol_connection":      resources.ResourceExaConnection(),
 			"exasol_physical_schema": resources.ResourceExaPhysicalSchema(),
+			"exasol_virtual_schema":  resources.ResourceExaVirtualSchema(),
 		},
 		Schema: map[string]*schema.Schema{
 			"username": {
