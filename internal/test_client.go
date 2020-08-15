@@ -34,8 +34,5 @@ func MustCreateTestClient() *exaprovider.Client {
 		LogLevel: "debug",
 	}
 
-	conn := exasol.Connect(conf)
-	return &exaprovider.Client{
-		Conn: conn,
-	}
+	return exaprovider.NewClient(conf)
 }

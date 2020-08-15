@@ -12,12 +12,12 @@ func TestReadPhysicalSchema(t *testing.T) {
 	name := t.Name()
 
 	stmt := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", name)
-	_, err := exaClient.Conn.Execute(stmt)
+	_, err := exaClient.Execute(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer exaClient.Conn.Execute(fmt.Sprintf("DROP SCHEMA %s", name))
+	defer exaClient.Execute(fmt.Sprintf("DROP SCHEMA %s", name))
 
 	read := &internal.TestData{
 		Values: map[string]interface{}{

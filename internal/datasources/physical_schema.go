@@ -30,7 +30,7 @@ func readPhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 func readPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 	name := d.Get("name").(string)
 
-	res, err := c.Conn.FetchSlice("SELECT SCHEMA_NAME FROM EXA_ALL_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = FALSE ", []interface{}{
+	res, err := c.FetchSlice("SELECT SCHEMA_NAME FROM EXA_ALL_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = FALSE ", []interface{}{
 		name,
 	}, "SYS")
 	if err != nil {

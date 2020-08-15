@@ -40,7 +40,7 @@ func readConnection(d *schema.ResourceData, meta interface{}) error {
 func readConnectionData(d internal.Data, c *exaprovider.Client) error {
 	name := d.Get("name").(string)
 
-	res, err := c.Conn.FetchSlice("SELECT CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
+	res, err := c.FetchSlice("SELECT CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
 		name,
 	}, "SYS")
 	if err != nil {

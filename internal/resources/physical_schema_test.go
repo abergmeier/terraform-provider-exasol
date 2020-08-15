@@ -92,7 +92,7 @@ func TestImportPhysicalSchema(t *testing.T) {
 	imp.SetId("TestImportPhysicalSchemaWithOtherName")
 
 	stmt := "CREATE SCHEMA IF NOT EXISTS TestImportPhysicalSchemaWithOtherName"
-	_, err := exaClient.Conn.Execute(stmt)
+	_, err := exaClient.Execute(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}

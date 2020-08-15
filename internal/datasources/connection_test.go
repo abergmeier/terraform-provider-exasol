@@ -12,12 +12,12 @@ func TestReadConnection(t *testing.T) {
 	name := t.Name()
 
 	stmt := fmt.Sprintf("CREATE CONNECTION %s TO 'foo'", name)
-	_, err := exaClient.Conn.Execute(stmt)
+	_, err := exaClient.Execute(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer exaClient.Conn.Execute(fmt.Sprintf("DROP CONNECTION %s", name))
+	defer exaClient.Execute(fmt.Sprintf("DROP CONNECTION %s", name))
 
 	read := &internal.TestData{
 		Values: map[string]interface{}{

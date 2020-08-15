@@ -42,7 +42,7 @@ func createPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 	}
 
 	stmt := fmt.Sprintf("CREATE SCHEMA %s", name)
-	_, err = c.Conn.Execute(stmt)
+	_, err = c.Execute(stmt)
 
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ func deletePhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 		return err
 	}
 	stmt := fmt.Sprintf("DROP SCHEMA %s", name)
-	_, err = c.Conn.Execute(stmt)
+	_, err = c.Execute(stmt)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func existsPhysicalSchema(d *schema.ResourceData, meta interface{}) (bool, error
 
 func existsPhysicalSchemaData(d internal.Data, c *exaprovider.Client) (bool, error) {
 
-	result, err := c.Conn.Execute("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?)", [][]interface{}{
+	result, err := c.Execute("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?)", [][]interface{}{
 		{
 			d.Id(),
 		},
@@ -113,7 +113,7 @@ func importPhysicalSchema(d *schema.ResourceData, meta interface{}) ([]*schema.R
 
 func importPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 
-	slice, err := c.Conn.FetchSlice("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = false", []interface{}{
+	slice, err := c.FetchSlice("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = false", []interface{}{
 		d.Id(),
 	}, "SYS")
 	if err != nil {
@@ -138,7 +138,7 @@ func readPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 		return err
 	}
 
-	res, err := c.Conn.FetchSlice("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = FALSE ", []interface{}{
+	res, err := c.FetchSlice("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = FALSE ", []interface{}{
 		name,
 	}, "SYS")
 	if err != nil {

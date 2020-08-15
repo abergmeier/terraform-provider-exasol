@@ -60,9 +60,10 @@ func readConnectionData(d internal.Data, c *exaprovider.Client) error {
 		return err
 	}
 
-	res, err := c.Conn.FetchSlice("SELECT CONNECTION_NAME, CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
+	res, err := c.FetchSlice("SELECT CONNECTION_NAME, CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
 		name,
 	}, "SYS")
+
 	if err != nil {
 		return err
 	}
@@ -90,26 +91,22 @@ func createConnection(d *schema.ResourceData, meta interface{}) error {
 }
 
 func createConnectionData(d internal.Data, c *exaprovider.Client) error {
-	name, err := resourceName(d)
-	if err != nil {
-		return err
-	}
-	to, err := resourceTo(d)
-	if err != nil {
-		return err
-	}
+	name := d.Get("name").(string)
+	to := d.Get("to").(string)
+
 	user := resourceUser(d)
 	identifiedBy := resourceIdentifiedBy(d)
 
+	var err error
 	if user == "" {
 		stmt := fmt.Sprintf("CREATE CONNECTION %s TO '%s'", name, to)
-		_, err = c.Conn.Execute(stmt)
+		_, err = c.Execute(stmt)
 	} else if identifiedBy == "" {
 		stmt := fmt.Sprintf("CREATE CONNECTION %s TO '%s' USER '%s'", name, to, user)
-		_, err = c.Conn.Execute(stmt)
+		_, err = c.Execute(stmt)
 	} else {
 		stmt := fmt.Sprintf("CREATE CONNECTION %s TO '%s' USER '%s' IDENTIFIED BY '%s'", name, to, user, identifiedBy)
-		_, err = c.Conn.Execute(stmt)
+		_, err = c.Execute(stmt)
 	}
 
 	if err != nil {
@@ -132,7 +129,7 @@ func deleteConnectionData(d internal.Data, c *exaprovider.Client) error {
 		return err
 	}
 	stmt := fmt.Sprintf("DROP CONNECTION %s", name)
-	_, err = c.Conn.Execute(stmt)
+	_, err = c.Execute(stmt)
 	if err != nil {
 		return err
 	}
@@ -151,7 +148,7 @@ func importConnectionData(d internal.Data, c *exaprovider.Client) ([]*schema.Res
 		return nil, err
 	}
 
-	res, err := c.Conn.FetchSlice("SELECT CONNECTION_NAME, CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
+	res, err := c.FetchSlice("SELECT CONNECTION_NAME, CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
 		name,
 	}, "SYS")
 
@@ -193,18 +190,18 @@ func updateConnectionData(d internal.Data, c *exaprovider.Client) error {
 
 	if user == "" {
 		stmt := fmt.Sprintf("ALTER CONNECTION %s TO '%s'", name, to)
-		_, err := c.Conn.Execute(stmt)
+		_, err := c.Execute(stmt)
 		return err
 	}
 
 	if identifiedBy == "" {
 		stmt := fmt.Sprintf("ALTER CONNECTION %s TO '%s' USER '%s'", name, to, user)
-		_, err := c.Conn.Execute(stmt)
+		_, err := c.Execute(stmt)
 		return err
 	}
 
 	stmt := fmt.Sprintf("ALTER CONNECTION %s TO '%s' USER '%s' IDENTIFIED BY '%s'", name, to, user, identifiedBy)
-	_, err = c.Conn.Execute(stmt)
+	_, err = c.Execute(stmt)
 	return err
 }
 
@@ -219,7 +216,7 @@ func existsConnectionData(d internal.Data, c *exaprovider.Client) (bool, error) 
 		return false, err
 	}
 
-	result, err := c.Conn.Execute("SELECT CONNECTION_NAME FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", [][]interface{}{
+	result, err := c.Execute("SELECT CONNECTION_NAME FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", [][]interface{}{
 		{
 			name,
 		},

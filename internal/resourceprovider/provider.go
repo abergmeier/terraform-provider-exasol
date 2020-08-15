@@ -61,8 +61,5 @@ func providerConfigure(d internal.Data) (interface{}, error) {
 		Password: d.Get("password").(string),
 	}
 
-	conn := exasol.Connect(conf)
-	return &exaprovider.Client{
-		Conn: conn,
-	}, nil
+	return exaprovider.NewClient(conf), nil
 }

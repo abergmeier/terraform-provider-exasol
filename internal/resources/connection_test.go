@@ -10,31 +10,23 @@ import (
 
 func TestCreateConnection(t *testing.T) {
 	name := t.Name()
-	d := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": name,
-		},
-	}
-	err := createConnectionData(d, exaClient)
-	if err == nil {
-		t.Fatal("Expected error due to missing to")
-	}
 
-	d = &internal.TestData{
+	create := &internal.TestData{
 		Values: map[string]interface{}{
 			"name": name,
 			"to":   "me",
 		},
 	}
-	deleteConnectionData(d, exaClient)
-	err = createConnectionData(d, exaClient)
+	deleteConnectionData(create, exaClient)
+
+	err := createConnectionData(create, exaClient)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
-	defer deleteConnectionData(d, exaClient)
+	defer deleteConnectionData(create, exaClient)
 
-	if d.Id() != strings.ToUpper(name) {
-		t.Fatal("Unexpected id:", d.Id())
+	if create.Id() != strings.ToUpper(name) {
+		t.Fatal("Unexpected id:", create.Id())
 	}
 
 }
@@ -166,7 +158,7 @@ func TestImportConnection(t *testing.T) {
 	}
 
 	stmt := fmt.Sprintf("CREATE OR REPLACE CONNECTION %s TO 'http://foo' USER 'foo' IDENTIFIED BY 'bar'", name)
-	_, err = exaClient.Conn.Execute(stmt)
+	_, err = exaClient.Execute(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}

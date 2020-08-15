@@ -39,10 +39,7 @@ func TestMain(m *testing.M) {
 		LogLevel: "debug",
 	}
 
-	conn := exasol.Connect(conf)
-	exaClient = &exaprovider.Client{
-		Conn: conn,
-	}
+	exaClient = exaprovider.NewClient(conf)
 
 	os.Exit(m.Run())
 }
