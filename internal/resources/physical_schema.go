@@ -45,10 +45,10 @@ func ResourceExaPhysicalSchema() *schema.Resource {
 
 func createPhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
-	return createPhysicalSchemaData(d, c)
+	return CreatePhysicalSchemaData(d, c)
 }
 
-func createPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
+func CreatePhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 	name, err := resourceName(d)
 	if err != nil {
 		return err
@@ -67,10 +67,10 @@ func createPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 
 func deletePhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
-	return deletePhysicalSchemaData(d, c)
+	return DeletePhysicalSchemaData(d, c)
 }
 
-func deletePhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
+func DeletePhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 	name, err := resourceName(d)
 	if err != nil {
 		return err
