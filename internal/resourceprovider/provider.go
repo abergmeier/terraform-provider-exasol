@@ -13,11 +13,11 @@ import (
 func Provider() terraform.ResourceProvider {
 	provider := &schema.Provider{
 		DataSourcesMap: map[string]*schema.Resource{
-			"exasol_connection":      resources.DataSourceExaConnection(),
+			"exasol_connection":      datasources.ConnectionResource(),
 			"exasol_physical_schema": datasources.PhysicalSchema(),
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"exasol_connection":      resources.ResourceExaConnection(),
+			"exasol_connection":      resources.ConnectionResource(),
 			"exasol_physical_schema": resources.PhysicalSchema(),
 		},
 		Schema: map[string]*schema.Schema{

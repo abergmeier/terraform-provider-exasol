@@ -10,30 +10,7 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-func DataSourceExaConnection() *schema.Resource {
-	return &schema.Resource{
-		Schema: map[string]*schema.Schema{
-			"name": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "Name of connection",
-			},
-			"to": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "Where connection points to",
-			},
-			"username": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "User with connection",
-			},
-		},
-		Read: readConnection,
-	}
-}
-
-func ResourceExaConnection() *schema.Resource {
+func ConnectionResource() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"name": {
