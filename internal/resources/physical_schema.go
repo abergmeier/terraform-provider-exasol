@@ -10,20 +10,7 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-func DataSourceExaPhysicalSchema() *schema.Resource {
-	return &schema.Resource{
-		Schema: map[string]*schema.Schema{
-			"name": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "Name of Schema",
-			},
-		},
-		Read: readPhysicalSchema,
-	}
-}
-
-func ResourceExaPhysicalSchema() *schema.Resource {
+func PhysicalSchema() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"name": {

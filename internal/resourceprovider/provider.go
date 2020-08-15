@@ -2,6 +2,7 @@ package resourceprovider
 
 import (
 	"github.com/abergmeier/terraform-exasol/internal"
+	"github.com/abergmeier/terraform-exasol/internal/datasources"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-exasol/internal/resources"
 	"github.com/grantstreetgroup/go-exasol-client"
@@ -13,11 +14,11 @@ func Provider() terraform.ResourceProvider {
 	provider := &schema.Provider{
 		DataSourcesMap: map[string]*schema.Resource{
 			"exasol_connection":      resources.DataSourceExaConnection(),
-			"exasol_physical_schema": resources.DataSourceExaPhysicalSchema(),
+			"exasol_physical_schema": datasources.PhysicalSchema(),
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"exasol_connection":      resources.ResourceExaConnection(),
-			"exasol_physical_schema": resources.ResourceExaPhysicalSchema(),
+			"exasol_physical_schema": resources.PhysicalSchema(),
 		},
 		Schema: map[string]*schema.Schema{
 			"username": {

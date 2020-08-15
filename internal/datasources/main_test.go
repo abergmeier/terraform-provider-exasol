@@ -1,4 +1,4 @@
-package resourceprovider
+package datasources
 
 import (
 	"os"
