@@ -6,10 +6,10 @@ Prototype implementation of Plugin for EXASOL.
 
 ## Status
 
-| Supported         | Implemeted as          |
-| ---               | ---                    |
-| Connection        | exasol_connection      |
-| Schema (physical) | exasol_physical_schema |
+| Supported         | Implemeted as          | Examples                                             |
+| ---               | ---                    | ---                                                  |
+| Connection        | exasol_connection      | [deployment/connection.tf](deployment/connection.tf) |
+| Schema (physical) | exasol_physical_schema | [deployment/schema.tf](deployment/schema.tf)         |
 
 
 
