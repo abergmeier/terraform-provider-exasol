@@ -8,8 +8,8 @@ resource "exasol_connection" "ftp_connection" {
 }
 
 resource "exasol_connection" "exa_connection" {
-  name     = "exa_connection"
-  to       = "192.168.6.11..14:8563"
+  name = "exa_connection"
+  to   = "192.168.6.11..14:8563"
 }
 
 resource "exasol_connection" "ora_connection" {
