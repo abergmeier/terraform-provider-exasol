@@ -7,6 +7,8 @@ import (
 
 	"github.com/abergmeier/terraform-exasol/internal"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-exasol/pkg/argument"
+	"github.com/abergmeier/terraform-exasol/pkg/db"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -44,7 +46,7 @@ func createPhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 }
 
 func createPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
-	name, err := resourceName(d)
+	name, err := argument.Name(d)
 	if err != nil {
 		return err
 	}
@@ -153,7 +155,7 @@ func readPhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 }
 
 func readPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
-	name, err := resourceName(d)
+	name, err := argument.Name(d)
 	if err != nil {
 		return err
 	}
@@ -188,11 +190,8 @@ func updatePhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 func updatePhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
 
 	if d.HasChange("name") {
-		// do a rename
 		old, new := d.GetChange("name")
-
-		stmt := fmt.Sprintf("RENAME SCHEMA %s TO %s", old.(string), new.(string))
-		_, err := c.Execute(stmt)
+		err := db.Rename(c, "SCHEMA", old.(string), new.(string), "")
 		if err != nil {
 			return err
 		}
