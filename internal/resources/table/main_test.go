@@ -1,4 +1,4 @@
-package datasources
+package table
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	schemaName = "datasources_TestMain"
+	schemaName = "resources_table_TestMain"
 )
 
 var (

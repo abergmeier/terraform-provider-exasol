@@ -7,6 +7,7 @@ import (
 
 	"github.com/abergmeier/terraform-exasol/internal"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-exasol/pkg/argument"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -59,7 +60,7 @@ func readConnection(d *schema.ResourceData, meta interface{}) error {
 }
 
 func readConnectionData(d internal.Data, c *exasol.Conn) error {
-	name, err := resourceName(d)
+	name, err := argument.Name(d)
 	if err != nil {
 		return err
 	}
@@ -103,13 +104,15 @@ func createConnection(d *schema.ResourceData, meta interface{}) error {
 }
 
 func createConnectionData(d internal.Data, c *exasol.Conn) error {
-	name := d.Get("name").(string)
+	name, err := argument.Name(d)
+	if err != nil {
+		return err
+	}
 	to := d.Get("to").(string)
 
 	user := resourceUser(d)
 	identifiedBy := resourceIdentifiedBy(d)
 
-	var err error
 	if user == "" {
 		stmt := fmt.Sprintf("CREATE CONNECTION %s TO '%s'", name, to)
 		_, err = c.Execute(stmt)
@@ -143,10 +146,11 @@ func deleteConnection(d *schema.ResourceData, meta interface{}) error {
 
 func deleteConnectionData(d internal.Data, c *exasol.Conn) error {
 
-	name, err := resourceName(d)
+	name, err := argument.Name(d)
 	if err != nil {
 		return err
 	}
+
 	stmt := fmt.Sprintf("DROP CONNECTION %s", name)
 	_, err = c.Execute(stmt)
 	if err != nil {
@@ -164,7 +168,7 @@ func importConnection(d *schema.ResourceData, meta interface{}) ([]*schema.Resou
 }
 
 func importConnectionData(d internal.Data, c *exasol.Conn) ([]*schema.ResourceData, error) {
-	name, err := resourceName(d)
+	name, err := argument.Name(d)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +209,7 @@ func updateConnection(d *schema.ResourceData, meta interface{}) error {
 }
 
 func updateConnectionData(d internal.Data, c *exasol.Conn) error {
-	name, err := resourceName(d)
+	name, err := argument.Name(d)
 	if err != nil {
 		return err
 	}
@@ -241,7 +245,7 @@ func existsConnection(d *schema.ResourceData, meta interface{}) (bool, error) {
 }
 
 func existsConnectionData(d internal.Data, c *exasol.Conn) (bool, error) {
-	name, err := resourceName(d)
+	name, err := argument.Name(d)
 	if err != nil {
 		return false, err
 	}
@@ -269,26 +273,12 @@ func existsConnectionData(d internal.Data, c *exasol.Conn) (bool, error) {
 	return rows > 0.0, nil
 }
 
-func resourceName(d internal.Data) (string, error) {
-	name := d.Get("name")
-	if name == nil {
-		return "", fmt.Errorf("Missing name for %s", d)
-	}
-	if name == "" {
-		return "", fmt.Errorf("Empty name for %s", d)
-	}
-	return name.(string), nil
-}
-
 func resourceTo(d internal.Data) (string, error) {
-	to := d.Get("to")
-	if to == nil {
-		return "", fmt.Errorf("Missing to for %s", d)
-	}
+	to := d.Get("to").(string)
 	if to == "" {
 		return "", fmt.Errorf("Empty name for %s", d)
 	}
-	return to.(string), nil
+	return to, nil
 }
 
 func resourceUser(d internal.Data) string {

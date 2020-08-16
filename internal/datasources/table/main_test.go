@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	schemaName = "datasources_TestMain"
+	schemaName = "datasources_table_TestMain"
 )
 
 var (

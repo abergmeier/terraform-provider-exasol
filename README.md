@@ -12,6 +12,7 @@ Go [here](https://registry.terraform.io/providers/abergmeier/exasol/latest) for 
 | ---               | ---                    | ---                                                  |
 | Connection        | exasol_connection      | [deployment/connection.tf](deployment/connection.tf) |
 | Schema (physical) | exasol_physical_schema | [deployment/schema.tf](deployment/schema.tf)         |
+| Table             | exasol_table           | [deployment/table.tf](deployment/table.tf)         |
 
 
 
@@ -21,7 +22,6 @@ Go [here](https://registry.terraform.io/providers/abergmeier/exasol/latest) for 
 | Role             | exasol_role                |
 | Schema (virtual) | exasol_virtual_schema      |
 | Script           | exasol_script              |
-| Table            | exasol_table               |
 | User             | exasol_user                |
 | View             | exasol_view                |
 
