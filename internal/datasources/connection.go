@@ -6,6 +6,7 @@ import (
 
 	"github.com/abergmeier/terraform-exasol/internal"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
+	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
@@ -34,10 +35,12 @@ func ConnectionResource() *schema.Resource {
 
 func readConnection(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
-	return readConnectionData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	return readConnectionData(d, locked.Conn)
 }
 
-func readConnectionData(d internal.Data, c *exaprovider.Client) error {
+func readConnectionData(d internal.Data, c *exasol.Conn) error {
 	name := d.Get("name").(string)
 
 	res, err := c.FetchSlice("SELECT CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{

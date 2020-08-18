@@ -6,6 +6,7 @@ import (
 
 	"github.com/abergmeier/terraform-exasol/internal"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
+	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
@@ -24,10 +25,12 @@ func PhysicalSchema() *schema.Resource {
 
 func readPhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
-	return readPhysicalSchemaData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	return readPhysicalSchemaData(d, locked.Conn)
 }
 
-func readPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
+func readPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
 	name := d.Get("name").(string)
 
 	res, err := c.FetchSlice("SELECT SCHEMA_NAME FROM EXA_ALL_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = FALSE ", []interface{}{

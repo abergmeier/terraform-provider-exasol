@@ -8,6 +8,9 @@ import (
 )
 
 func TestCreatePhysicalSchema(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
 	name := t.Name()
 
 	create := &internal.TestData{
@@ -16,17 +19,18 @@ func TestCreatePhysicalSchema(t *testing.T) {
 		},
 	}
 
-	deletePhysicalSchemaData(create, exaClient)
+	deletePhysicalSchemaData(create, locked.Conn)
 
-	err := createPhysicalSchemaData(create, exaClient)
+	err := createPhysicalSchemaData(create, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
-
-	defer deletePhysicalSchemaData(create, exaClient)
 }
 
 func TestDeletePhysicalSchema(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
 	name := t.Name()
 
 	delete := &internal.TestData{
@@ -36,9 +40,9 @@ func TestDeletePhysicalSchema(t *testing.T) {
 	}
 	delete.SetId("foo")
 
-	createPhysicalSchemaData(delete, exaClient)
+	createPhysicalSchemaData(delete, locked.Conn)
 
-	err := deletePhysicalSchemaData(delete, exaClient)
+	err := deletePhysicalSchemaData(delete, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -48,6 +52,9 @@ func TestDeletePhysicalSchema(t *testing.T) {
 }
 
 func TestExistsPhysicalSchema(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
 	name := t.Name()
 
 	exists := &internal.TestData{
@@ -56,9 +63,9 @@ func TestExistsPhysicalSchema(t *testing.T) {
 		},
 	}
 
-	deletePhysicalSchemaData(exists, exaClient)
+	deletePhysicalSchemaData(exists, locked.Conn)
 
-	e, err := existsPhysicalSchemaData(exists, exaClient)
+	e, err := existsPhysicalSchemaData(exists, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -67,11 +74,9 @@ func TestExistsPhysicalSchema(t *testing.T) {
 		t.Fatal("Expected exists to be false")
 	}
 
-	createPhysicalSchemaData(exists, exaClient)
+	createPhysicalSchemaData(exists, locked.Conn)
 
-	defer deletePhysicalSchemaData(exists, exaClient)
-
-	e, err = existsPhysicalSchemaData(exists, exaClient)
+	e, err = existsPhysicalSchemaData(exists, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -82,6 +87,9 @@ func TestExistsPhysicalSchema(t *testing.T) {
 }
 
 func TestImportPhysicalSchema(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
 	name := t.Name()
 
 	imp := &internal.TestData{
@@ -92,14 +100,12 @@ func TestImportPhysicalSchema(t *testing.T) {
 	imp.SetId("TestImportPhysicalSchemaWithOtherName")
 
 	stmt := "CREATE SCHEMA IF NOT EXISTS TestImportPhysicalSchemaWithOtherName"
-	_, err := exaClient.Execute(stmt)
+	_, err := locked.Conn.Execute(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer deletePhysicalSchemaData(imp, exaClient)
-
-	err = importPhysicalSchemaData(imp, exaClient)
+	err = importPhysicalSchemaData(imp, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -113,6 +119,9 @@ func TestImportPhysicalSchema(t *testing.T) {
 }
 
 func TestReadPhysicalSchema(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
 	name := t.Name()
 
 	create := &internal.TestData{
@@ -127,11 +136,9 @@ func TestReadPhysicalSchema(t *testing.T) {
 		},
 	}
 
-	createPhysicalSchemaData(create, exaClient)
+	createPhysicalSchemaData(create, locked.Conn)
 
-	defer deletePhysicalSchemaData(create, exaClient)
-
-	err := readPhysicalSchemaData(read, exaClient)
+	err := readPhysicalSchemaData(read, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -142,6 +149,9 @@ func TestReadPhysicalSchema(t *testing.T) {
 }
 
 func TestRenamePhysicalSchema(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
 	name := t.Name()
 
 	create := &internal.TestData{
@@ -150,9 +160,7 @@ func TestRenamePhysicalSchema(t *testing.T) {
 		},
 	}
 
-	createPhysicalSchemaData(create, exaClient)
-
-	defer deletePhysicalSchemaData(create, exaClient)
+	createPhysicalSchemaData(create, locked.Conn)
 
 	newName := name + "_SHINY"
 	rename := &internal.TestData{
@@ -164,17 +172,10 @@ func TestRenamePhysicalSchema(t *testing.T) {
 		},
 	}
 
-	err := updatePhysicalSchemaData(rename, exaClient)
+	err := updatePhysicalSchemaData(rename, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
-
-	delete := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": newName,
-		},
-	}
-	defer deletePhysicalSchemaData(delete, exaClient)
 
 	name = rename.Get("name").(string)
 	if name != newName {

@@ -9,15 +9,15 @@ import (
 )
 
 func TestReadPhysicalSchema(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
 	name := t.Name()
 
 	stmt := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", name)
-	_, err := exaClient.Execute(stmt)
+	_, err := locked.Conn.Execute(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	defer exaClient.Execute(fmt.Sprintf("DROP SCHEMA %s", name))
 
 	read := &internal.TestData{
 		Values: map[string]interface{}{
@@ -25,7 +25,7 @@ func TestReadPhysicalSchema(t *testing.T) {
 		},
 	}
 
-	err = readPhysicalSchemaData(read, exaClient)
+	err = readPhysicalSchemaData(read, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
