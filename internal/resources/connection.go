@@ -17,6 +17,7 @@ func ConnectionResource() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: "Name of connection",
+				ForceNew:    true,
 			},
 			"to": {
 				Type:        schema.TypeString,
