@@ -140,3 +140,38 @@ func TestReadPhysicalSchema(t *testing.T) {
 		t.Fatalf("Expected Id to be %s: %s", strings.ToUpper(name), read.Id())
 	}
 }
+
+func TestRenamePhysicalSchema(t *testing.T) {
+	name := t.Name()
+
+	create := &internal.TestData{
+		Values: map[string]interface{}{
+			"name": name,
+		},
+	}
+
+	createPhysicalSchemaData(create, exaClient)
+
+	defer deletePhysicalSchemaData(create, exaClient)
+
+	rename := &internal.TestData{
+		Values: map[string]interface{}{
+			"name": name,
+		},
+		NewValues: map[string]interface{}{
+			"name": "NEWANDSHINY",
+		},
+	}
+
+	err := updatePhysicalSchemaData(rename, exaClient)
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
+
+	delete := &internal.TestData{
+		Values: map[string]interface{}{
+			"name": "NEWANDSHINY",
+		},
+	}
+	defer deletePhysicalSchemaData(delete, exaClient)
+}

@@ -1,8 +1,9 @@
 package internal
 
 type TestData struct {
-	id     string
-	Values map[string]interface{}
+	id        string
+	Values    map[string]interface{}
+	NewValues map[string]interface{}
 }
 
 func (d *TestData) Get(name string) interface{} {
@@ -24,4 +25,13 @@ func (d *TestData) SetId(id string) {
 
 func (d *TestData) Id() string {
 	return d.id
+}
+
+func (d *TestData) HasChange(name string) bool {
+	_, ok := d.NewValues[name]
+	return ok
+}
+
+func (d *TestData) GetChange(name string) (interface{}, interface{}) {
+	return d.Values[name], d.NewValues[name]
 }
