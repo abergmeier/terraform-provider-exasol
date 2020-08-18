@@ -7,6 +7,7 @@ import (
 
 	"github.com/abergmeier/terraform-exasol/internal"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
+	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
@@ -32,10 +33,17 @@ func PhysicalSchema() *schema.Resource {
 
 func createPhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
-	return createPhysicalSchemaData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	err := createPhysicalSchemaData(d, locked.Conn)
+	if err != nil {
+		return err
+	}
+	locked.Conn.Commit()
+	return nil
 }
 
-func createPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
+func createPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
 	name, err := resourceName(d)
 	if err != nil {
 		return err
@@ -54,10 +62,17 @@ func createPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 
 func deletePhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
-	return deletePhysicalSchemaData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	err := deletePhysicalSchemaData(d, locked.Conn)
+	if err != nil {
+		return err
+	}
+	locked.Conn.Commit()
+	return nil
 }
 
-func deletePhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
+func deletePhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
 	name := d.Get("name").(string)
 
 	stmt := fmt.Sprintf("DROP SCHEMA %s", name)
@@ -72,10 +87,12 @@ func deletePhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 
 func existsPhysicalSchema(d *schema.ResourceData, meta interface{}) (bool, error) {
 	c := meta.(*exaprovider.Client)
-	return existsPhysicalSchemaData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	return existsPhysicalSchemaData(d, locked.Conn)
 }
 
-func existsPhysicalSchemaData(d internal.Data, c *exaprovider.Client) (bool, error) {
+func existsPhysicalSchemaData(d internal.Data, c *exasol.Conn) (bool, error) {
 
 	result, err := c.Execute("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?)", [][]interface{}{
 		{
@@ -102,14 +119,17 @@ func existsPhysicalSchemaData(d internal.Data, c *exaprovider.Client) (bool, err
 
 func importPhysicalSchema(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	c := meta.(*exaprovider.Client)
-	err := importPhysicalSchemaData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	err := importPhysicalSchemaData(d, locked.Conn)
 	if err != nil {
 		return nil, err
 	}
+	locked.Conn.Commit()
 	return []*schema.ResourceData{d}, nil
 }
 
-func importPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
+func importPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
 
 	slice, err := c.FetchSlice("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = false", []interface{}{
 		d.Id(),
@@ -127,10 +147,12 @@ func importPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 
 func readPhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
-	return readPhysicalSchemaData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	return readPhysicalSchemaData(d, locked.Conn)
 }
 
-func readPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
+func readPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
 	name, err := resourceName(d)
 	if err != nil {
 		return err
@@ -153,10 +175,17 @@ func readPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 
 func updatePhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
-	return updatePhysicalSchemaData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	err := updatePhysicalSchemaData(d, locked.Conn)
+	if err != nil {
+		return err
+	}
+	locked.Conn.Commit()
+	return nil
 }
 
-func updatePhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
+func updatePhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
 
 	if d.HasChange("name") {
 		// do a rename

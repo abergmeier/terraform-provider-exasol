@@ -7,6 +7,7 @@ import (
 
 	"github.com/abergmeier/terraform-exasol/internal"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
+	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
@@ -52,10 +53,12 @@ func ConnectionResource() *schema.Resource {
 
 func readConnection(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
-	return readConnectionData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	return readConnectionData(d, locked.Conn)
 }
 
-func readConnectionData(d internal.Data, c *exaprovider.Client) error {
+func readConnectionData(d internal.Data, c *exasol.Conn) error {
 	name, err := resourceName(d)
 	if err != nil {
 		return err
@@ -88,10 +91,18 @@ func readConnectionData(d internal.Data, c *exaprovider.Client) error {
 
 func createConnection(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
-	return createConnectionData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	err := createConnectionData(d, locked.Conn)
+	if err != nil {
+		return err
+	}
+
+	locked.Conn.Commit()
+	return nil
 }
 
-func createConnectionData(d internal.Data, c *exaprovider.Client) error {
+func createConnectionData(d internal.Data, c *exasol.Conn) error {
 	name := d.Get("name").(string)
 	to := d.Get("to").(string)
 
@@ -120,10 +131,17 @@ func createConnectionData(d internal.Data, c *exaprovider.Client) error {
 
 func deleteConnection(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
-	return deleteConnectionData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	err := deleteConnectionData(d, locked.Conn)
+	if err != nil {
+		return err
+	}
+	locked.Conn.Commit()
+	return nil
 }
 
-func deleteConnectionData(d internal.Data, c *exaprovider.Client) error {
+func deleteConnectionData(d internal.Data, c *exasol.Conn) error {
 
 	name, err := resourceName(d)
 	if err != nil {
@@ -140,10 +158,12 @@ func deleteConnectionData(d internal.Data, c *exaprovider.Client) error {
 
 func importConnection(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	c := meta.(*exaprovider.Client)
-	return importConnectionData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	return importConnectionData(d, locked.Conn)
 }
 
-func importConnectionData(d internal.Data, c *exaprovider.Client) ([]*schema.ResourceData, error) {
+func importConnectionData(d internal.Data, c *exasol.Conn) ([]*schema.ResourceData, error) {
 	name, err := resourceName(d)
 	if err != nil {
 		return nil, err
@@ -174,10 +194,17 @@ func importConnectionData(d internal.Data, c *exaprovider.Client) ([]*schema.Res
 
 func updateConnection(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
-	return updateConnectionData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	err := updateConnectionData(d, locked.Conn)
+	if err != nil {
+		return err
+	}
+	locked.Conn.Commit()
+	return nil
 }
 
-func updateConnectionData(d internal.Data, c *exaprovider.Client) error {
+func updateConnectionData(d internal.Data, c *exasol.Conn) error {
 	name, err := resourceName(d)
 	if err != nil {
 		return err
@@ -208,10 +235,12 @@ func updateConnectionData(d internal.Data, c *exaprovider.Client) error {
 
 func existsConnection(d *schema.ResourceData, meta interface{}) (bool, error) {
 	c := meta.(*exaprovider.Client)
-	return existsConnectionData(d, c)
+	locked := c.Lock()
+	defer locked.Unlock()
+	return existsConnectionData(d, locked.Conn)
 }
 
-func existsConnectionData(d internal.Data, c *exaprovider.Client) (bool, error) {
+func existsConnectionData(d internal.Data, c *exasol.Conn) (bool, error) {
 	name, err := resourceName(d)
 	if err != nil {
 		return false, err

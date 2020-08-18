@@ -9,6 +9,9 @@ import (
 )
 
 func TestCreateConnection(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
 	name := t.Name()
 
 	create := &internal.TestData{
@@ -17,13 +20,12 @@ func TestCreateConnection(t *testing.T) {
 			"to":   "me",
 		},
 	}
-	deleteConnectionData(create, exaClient)
+	deleteConnectionData(create, locked.Conn)
 
-	err := createConnectionData(create, exaClient)
+	err := createConnectionData(create, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
-	defer deleteConnectionData(create, exaClient)
 
 	if create.Id() != strings.ToUpper(name) {
 		t.Fatal("Unexpected id:", create.Id())
@@ -32,13 +34,16 @@ func TestCreateConnection(t *testing.T) {
 }
 
 func TestDeleteConnection(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
 	name := t.Name()
 	d := &internal.TestData{
 		Values: map[string]interface{}{
 			"name": name,
 		},
 	}
-	err := deleteConnectionData(d, exaClient)
+	err := deleteConnectionData(d, locked.Conn)
 	if err == nil {
 		t.Fatal("Expected error")
 	}
@@ -49,18 +54,21 @@ func TestDeleteConnection(t *testing.T) {
 			"to":   "me",
 		},
 	}
-	err = createConnectionData(create, exaClient)
+	err = createConnectionData(create, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
 
-	err = deleteConnectionData(d, exaClient)
+	err = deleteConnectionData(d, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
 }
 
 func TestExistsConnection(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
 	name := t.Name()
 
 	exists := &internal.TestData{
@@ -69,8 +77,8 @@ func TestExistsConnection(t *testing.T) {
 		},
 	}
 
-	deleteConnectionData(exists, exaClient)
-	e, err := existsConnectionData(exists, exaClient)
+	deleteConnectionData(exists, locked.Conn)
+	e, err := existsConnectionData(exists, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -85,14 +93,12 @@ func TestExistsConnection(t *testing.T) {
 		},
 	}
 
-	err = createConnectionData(create, exaClient)
+	err = createConnectionData(create, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
 
-	defer deleteConnectionData(create, exaClient)
-
-	e, err = existsConnectionData(exists, exaClient)
+	e, err = existsConnectionData(exists, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -102,6 +108,9 @@ func TestExistsConnection(t *testing.T) {
 }
 
 func TestReadConnection(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
 	name := t.Name()
 
 	read := &internal.TestData{
@@ -110,8 +119,8 @@ func TestReadConnection(t *testing.T) {
 		},
 	}
 
-	deleteConnectionData(read, exaClient)
-	err := readConnectionData(read, exaClient)
+	deleteConnectionData(read, locked.Conn)
+	err := readConnectionData(read, locked.Conn)
 	if err == nil {
 		t.Fatal("Expected error by readConnectionData")
 	}
@@ -123,14 +132,12 @@ func TestReadConnection(t *testing.T) {
 		},
 	}
 
-	err = createConnectionData(create, exaClient)
+	err = createConnectionData(create, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
 
-	defer deleteConnectionData(read, exaClient)
-
-	err = readConnectionData(read, exaClient)
+	err = readConnectionData(read, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -143,6 +150,9 @@ func TestReadConnection(t *testing.T) {
 }
 
 func TestImportConnection(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
 	name := t.Name()
 
 	imp := &internal.TestData{
@@ -151,19 +161,19 @@ func TestImportConnection(t *testing.T) {
 		},
 	}
 
-	deleteConnectionData(imp, exaClient)
-	_, err := importConnectionData(imp, exaClient)
+	deleteConnectionData(imp, locked.Conn)
+	_, err := importConnectionData(imp, locked.Conn)
 	if err == nil {
 		t.Fatal("Expected error from importConnectionData")
 	}
 
 	stmt := fmt.Sprintf("CREATE OR REPLACE CONNECTION %s TO 'http://foo' USER 'foo' IDENTIFIED BY 'bar'", name)
-	_, err = exaClient.Execute(stmt)
+	_, err = locked.Conn.Execute(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ids, err := importConnectionData(imp, exaClient)
+	ids, err := importConnectionData(imp, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -190,6 +200,9 @@ func TestImportConnection(t *testing.T) {
 }
 
 func TestUpdateConnection(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
 	name := t.Name()
 
 	create := &internal.TestData{
@@ -199,19 +212,17 @@ func TestUpdateConnection(t *testing.T) {
 		},
 	}
 
-	deleteConnectionData(create, exaClient)
+	deleteConnectionData(create, locked.Conn)
 
-	err := updateConnectionData(create, exaClient)
+	err := updateConnectionData(create, locked.Conn)
 	if err == nil {
 		t.Fatal("Expected error from updateConnectionData")
 	}
 
-	err = createConnectionData(create, exaClient)
+	err = createConnectionData(create, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
-
-	defer deleteConnectionData(create, exaClient)
 
 	update := &internal.TestData{
 		Values: map[string]interface{}{
@@ -221,7 +232,7 @@ func TestUpdateConnection(t *testing.T) {
 		},
 	}
 
-	err = updateConnectionData(update, exaClient)
+	err = updateConnectionData(update, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpexted error:", err)
 	}
@@ -232,7 +243,7 @@ func TestUpdateConnection(t *testing.T) {
 		},
 	}
 
-	err = readConnectionData(read, exaClient)
+	err = readConnectionData(read, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}

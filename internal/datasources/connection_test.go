@@ -9,15 +9,15 @@ import (
 )
 
 func TestReadConnection(t *testing.T) {
+	locked := exaClient.Lock()
+	defer locked.Unlock()
 	name := t.Name()
 
 	stmt := fmt.Sprintf("CREATE CONNECTION %s TO 'foo'", name)
-	_, err := exaClient.Execute(stmt)
+	_, err := locked.Conn.Execute(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	defer exaClient.Execute(fmt.Sprintf("DROP CONNECTION %s", name))
 
 	read := &internal.TestData{
 		Values: map[string]interface{}{
@@ -25,7 +25,7 @@ func TestReadConnection(t *testing.T) {
 		},
 	}
 
-	err = readConnectionData(read, exaClient)
+	err = readConnectionData(read, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
