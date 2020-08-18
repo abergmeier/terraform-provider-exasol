@@ -58,12 +58,10 @@ func deletePhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 }
 
 func deletePhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
-	name, err := resourceName(d)
-	if err != nil {
-		return err
-	}
+	name := d.Get("name").(string)
+
 	stmt := fmt.Sprintf("DROP SCHEMA %s", name)
-	_, err = c.Execute(stmt)
+	_, err := c.Execute(stmt)
 	if err != nil {
 		return err
 	}
@@ -154,6 +152,25 @@ func readPhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
 }
 
 func updatePhysicalSchema(d *schema.ResourceData, meta interface{}) error {
-	// Noop currently
+	c := meta.(*exaprovider.Client)
+	return updatePhysicalSchemaData(d, c)
+}
+
+func updatePhysicalSchemaData(d internal.Data, c *exaprovider.Client) error {
+
+	if d.HasChange("name") {
+		// do a rename
+		old, new := d.GetChange("name")
+
+		stmt := fmt.Sprintf("RENAME SCHEMA %s TO %s", old.(string), new.(string))
+		_, err := c.Execute(stmt)
+		if err != nil {
+			return err
+		}
+
+		d.Set("name", new)
+	}
+
+	_ = d.Get("name").(string)
 	return nil
 }
