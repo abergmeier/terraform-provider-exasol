@@ -4,6 +4,8 @@
 
 Prototype implementation of Plugin for EXASOL.
 
+Go [here](https://registry.terraform.io/providers/abergmeier/exasol/latest) for Terraform Registry.
+
 ## Status
 
 | Supported         | Implemeted as          | Examples                                             |
