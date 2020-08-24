@@ -8,7 +8,7 @@ ROOT_DIR=$(dirname "${SCRIPT_DIR}")
 
 (
     cd "${ROOT_DIR}"
-    go test ./...
+    TF_ACC=true go test ./... -v
 )
 
 (
