@@ -18,16 +18,12 @@ func TestAccExasolSchema_basic(t *testing.T) {
 		Providers: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(`provider "exasol" {
-	ip       = "%s"
-	username = "%s"
-	password = "%s"
-}
+				Config: fmt.Sprintf(`%s
 
 data "exasol_physical_schema" "dummy" {
 	name = "%s"
 }
-`, locked.Conn.Conf.Host, locked.Conn.Conf.Username, locked.Conn.Conf.Password, schemaName),
+`, test.ProviderInHCL(locked), schemaName),
 				Check: resource.ComposeTestCheckFunc(
 					testName("data.exasol_physical_schema.dummy"),
 				),

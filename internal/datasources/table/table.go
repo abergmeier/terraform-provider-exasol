@@ -1,4 +1,4 @@
-package datasources
+package table
 
 import (
 	"github.com/abergmeier/terraform-exasol/internal"
