@@ -10,7 +10,7 @@ type Client struct {
 	conns chan *exasol.Conn
 }
 
-type locked struct {
+type Locked struct {
 	Conn  *exasol.Conn
 	conns *chan *exasol.Conn
 }
@@ -29,14 +29,14 @@ func NewClient(conf exasol.ConnConf) *Client {
 	return c
 }
 
-func (c *Client) Lock() *locked {
-	return &locked{
+func (c *Client) Lock() *Locked {
+	return &Locked{
 		Conn:  <-c.conns,
 		conns: &c.conns,
 	}
 }
 
-func (l *locked) Unlock() {
+func (l *Locked) Unlock() {
 	// Ensure that only explicitly committed operations stay
 	l.Conn.Rollback()
 	*l.conns <- l.Conn
