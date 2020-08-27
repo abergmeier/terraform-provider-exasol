@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 
+	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-exasol/internal/resourceprovider"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
@@ -20,7 +21,7 @@ func init() {
 	}
 }
 
-func ProviderInHCL(locked *exaprovider.locked) string {
+func ProviderInHCL(locked *exaprovider.Locked) string {
 	return fmt.Sprintf(`provider "exasol" {
 	ip       = "%s"
 	username = "%s"

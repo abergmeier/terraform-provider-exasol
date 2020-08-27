@@ -2,7 +2,9 @@ package table_test
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/abergmeier/terraform-exasol/internal"
@@ -23,13 +25,39 @@ type expectedColumns struct {
 	t    string
 }
 
-// TestReadTableExasol tests all examples provided by Exasol.
+// TestAccExasolTable_basic all examples provided by Exasol.
 func TestAccExasolTable_basic(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
 	basicSetup(t, locked.Conn)
 
+	expected := []expectedColumns{
+		{
+			name: "A",
+			t:    "VARCHAR(20) UTF8",
+		},
+		{
+			name: "B",
+			t:    "DECIMAL(24,4)",
+		}, // NOT NULL,
+		{
+			name: "C",
+			t:    "DECIMAL(18,0)",
+		}, // DECIMAL DEFAULT 122,
+		{
+			name: "D",
+			t:    "DOUBLE",
+		},
+		{
+			name: "E",
+			t:    "TIMESTAMP",
+		}, //  DEFAULT CURRENT_TIMESTAMP,
+		{
+			name: "F",
+			t:    "BOOLEAN",
+		},
+	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:  nil,
 		Providers: test.DefaultAccProviders,
@@ -46,9 +74,315 @@ data "exasol_table" "t1" {
 }
 `, test.ProviderInHCL(locked), schemaName),
 				Check: resource.ComposeTestCheckFunc(
-					testT1Columns("data.exasol_table.t1"),
-					testT1ForeignKeys("data.exasol_table.t1"),
-					testT1PrimaryKeys("data.exasol_table.t1"),
+					testColumns("data.exasol_table.t1", expected),
+					testPrimaryKeys("data.exasol_table.t1", nil),
+					testForeignKeys("data.exasol_table.t1", nil),
+				),
+			},
+		},
+	})
+
+	expected = []expectedColumns{
+		{
+			name: "A",
+			t:    "VARCHAR(20) UTF8",
+		},
+		{
+			name: "B",
+			t:    "DECIMAL(24,4)",
+		}, //  NOT NULL,
+		{
+			name: "C",
+			t:    "DECIMAL(19,0)",
+		}, //  DEFAULT 122,
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:  nil,
+		Providers: test.DefaultAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`%s
+
+data "exasol_physical_schema" "dummy" {
+	name = "%s"
+}
+data "exasol_table" "t2" {
+	name = "t2"
+	schema = data.exasol_physical_schema.dummy.name
+}
+`, test.ProviderInHCL(locked), schemaName),
+				Check: resource.ComposeTestCheckFunc(
+					testColumns("data.exasol_table.t2", expected),
+					testPrimaryKeys("data.exasol_table.t2", nil),
+					testForeignKeys("data.exasol_table.t2", nil),
+				),
+			},
+		},
+	})
+
+	expected = []expectedColumns{
+		{
+			name: "MY_COUNT",
+			t:    "DECIMAL(18,0)",
+		},
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:  nil,
+		Providers: test.DefaultAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`%s
+
+data "exasol_physical_schema" "dummy" {
+	name = "%s"
+}
+data "exasol_table" "t3" {
+	name = "t3"
+	schema = data.exasol_physical_schema.dummy.name
+}
+`, test.ProviderInHCL(locked), schemaName),
+				Check: resource.ComposeTestCheckFunc(
+					testColumns("data.exasol_table.t3", expected),
+					testPrimaryKeys("data.exasol_table.t3", nil),
+					testForeignKeys("data.exasol_table.t3", nil),
+				),
+			},
+		},
+	})
+
+	expected = []expectedColumns{
+		{
+			name: "A",
+			t:    "VARCHAR(20) UTF8",
+		},
+		{
+			name: "B", //  NOT NULL,
+			t:    "DECIMAL(24,4)",
+		},
+		{
+			name: "C", //  DEFAULT 122,
+			t:    "DECIMAL(18,0)",
+		},
+		{
+			name: "D",
+			t:    "DOUBLE",
+		},
+		{
+			name: "E", //  DEFAULT CURRENT_TIMESTAMP,
+			t:    "TIMESTAMP",
+		},
+		{
+			name: "F",
+			t:    "BOOLEAN",
+		},
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:  nil,
+		Providers: test.DefaultAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`%s
+
+data "exasol_physical_schema" "dummy" {
+	name = "%s"
+}
+data "exasol_table" "t4" {
+	name = "t4"
+	schema = data.exasol_physical_schema.dummy.name
+}
+`, test.ProviderInHCL(locked), schemaName),
+				Check: resource.ComposeTestCheckFunc(
+					testColumns("data.exasol_table.t4", expected),
+					testPrimaryKeys("data.exasol_table.t4", nil),
+					testForeignKeys("data.exasol_table.t4", nil),
+				),
+			},
+		},
+	})
+
+	expected = []expectedColumns{
+		{
+			name: "ID",
+			t:    "DECIMAL(18,0)",
+		},
+		{
+			name: "A",
+			t:    "VARCHAR(20) UTF8",
+		},
+		{
+			name: "B",
+			t:    "DECIMAL(24,4)",
+		},
+		{
+			name: "C",
+			t:    "DECIMAL(18,0)",
+		},
+		{
+			name: "D",
+			t:    "DOUBLE",
+		},
+		{
+			name: "E",
+			t:    "TIMESTAMP",
+		},
+		{
+			name: "F",
+			t:    "BOOLEAN",
+		},
+		{
+			name: "G",
+			t:    "DOUBLE",
+		},
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:  nil,
+		Providers: test.DefaultAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`%s
+
+data "exasol_physical_schema" "dummy" {
+	name = "%s"
+}
+data "exasol_table" "t5" {
+	name = "t5"
+	schema = data.exasol_physical_schema.dummy.name
+}
+`, test.ProviderInHCL(locked), schemaName),
+				Check: resource.ComposeTestCheckFunc(
+					testColumns("data.exasol_table.t5", expected),
+					testPrimaryKeys("data.exasol_table.t5", map[string]int{
+						"id": 0,
+					}),
+					testForeignKeys("data.exasol_table.t5", nil),
+				),
+			},
+		},
+	})
+
+	expected = []expectedColumns{
+		{
+			name: "ORDER_ID",
+			t:    "DECIMAL(18,0)",
+		},
+		{
+			name: "ORDER_PRICE",
+			t:    "DOUBLE",
+		},
+		{
+			name: "ORDER_DATE",
+			t:    "DATE",
+		},
+		{
+			name: "COUNTRY",
+			t:    "VARCHAR(40) UTF8",
+		},
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:  nil,
+		Providers: test.DefaultAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`%s
+
+data "exasol_physical_schema" "dummy" {
+	name = "%s"
+}
+data "exasol_table" "t6" {
+	name = "t6"
+	schema = data.exasol_physical_schema.dummy.name
+}
+`, test.ProviderInHCL(locked), schemaName),
+				Check: resource.ComposeTestCheckFunc(
+					testColumns("data.exasol_table.t6", expected),
+					testPrimaryKeys("data.exasol_table.t6", nil),
+					testForeignKeys("data.exasol_table.t6", nil),
+				),
+			},
+		},
+	})
+
+	expected = []expectedColumns{
+		{
+			name: "A",
+			t:    "VARCHAR(20) UTF8",
+		},
+		{
+			name: "B",
+			t:    "DECIMAL(24,4)", // NOT NULL,
+		},
+		{
+			name: "C",
+			t:    "DECIMAL(18,0)", // DEFAULT 122,
+		},
+		{
+			name: "D",
+			t:    "DOUBLE",
+		},
+		{
+			name: "E",
+			t:    "TIMESTAMP", // DEFAULT CURRENT_TIMESTAMP,
+		},
+		{
+			name: "F",
+			t:    "BOOLEAN",
+		},
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:  nil,
+		Providers: test.DefaultAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`%s
+
+data "exasol_physical_schema" "dummy" {
+	name = "%s"
+}
+data "exasol_table" "t7" {
+	name = "t7"
+	schema = data.exasol_physical_schema.dummy.name
+}
+`, test.ProviderInHCL(locked), schemaName),
+				Check: resource.ComposeTestCheckFunc(
+					testColumns("data.exasol_table.t7", expected),
+					testPrimaryKeys("data.exasol_table.t7", nil),
+					testForeignKeys("data.exasol_table.t7", nil),
+				),
+			},
+		},
+	})
+
+	expected = []expectedColumns{
+		{
+			name: "REF_ID",
+			t:    "DECIMAL(18,0)",
+		},
+		{
+			name: "B",
+			t:    "VARCHAR(20) UTF8",
+		},
+	}
+	resource.Test(t, resource.TestCase{
+		PreCheck:  nil,
+		Providers: test.DefaultAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`%s
+
+data "exasol_physical_schema" "dummy" {
+	name = "%s"
+}
+data "exasol_table" "t8" {
+	name = "t8"
+	schema = data.exasol_physical_schema.dummy.name
+}
+`, test.ProviderInHCL(locked), schemaName),
+				Check: resource.ComposeTestCheckFunc(
+					testColumns("data.exasol_table.t8", expected),
+					testPrimaryKeys("data.exasol_table.t8", nil),
+					testForeignKeys("data.exasol_table.t8", map[string]int{
+						"ref_id": 0,
+					}),
 				),
 			},
 		},
@@ -125,10 +459,16 @@ func tryDropTable(ref string, c *exasol.Conn) {
 	c.Execute(stmt, nil, schemaName)
 }
 
-func testColumns(state *terraform.State, id string, expected []expectedColumns) error {
+func testColumns(id string, expected []expectedColumns) resource.TestCheckFunc {
 
-	return testWithResource(state, id, func(ds *terraform.ResourceState) error {
+	return func(state *terraform.State) error {
 
+		ds, err := testDatasource(state, id)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%#v\n", ds.Primary.Attributes)
 		countString, ok := ds.Primary.Attributes["columns.#"]
 		if !ok {
 			return fmt.Errorf("Column count not found: %s", id)
@@ -155,318 +495,86 @@ func testColumns(state *terraform.State, id string, expected []expectedColumns) 
 			}
 		}
 		return nil
-	})
-}
-
-func testT1Columns(id string) resource.TestCheckFunc {
-
-	return func(state *terraform.State) error {
-		expected := []expectedColumns{
-			{
-				name: "A",
-				t:    "VARCHAR(20) UTF8",
-			},
-			{
-				name: "B",
-				t:    "DECIMAL(24,4)",
-			}, // NOT NULL,
-			{
-				name: "C",
-				t:    "DECIMAL(18,0)",
-			}, // DECIMAL DEFAULT 122,
-			{
-				name: "D",
-				t:    "DOUBLE",
-			},
-			{
-				name: "E",
-				t:    "TIMESTAMP",
-			}, //  DEFAULT CURRENT_TIMESTAMP,
-			{
-				name: "F",
-				t:    "BOOLEAN",
-			},
-		}
-
-		return testColumns(state, id, expected)
 	}
 }
 
-func testT1ForeignKeys(id string) resource.TestCheckFunc {
-	return func(state *terraform.State) error {
-		return testForeignKeys(state, id, nil)
-	}
-}
-
-func testT1PrimaryKeys(id string) resource.TestCheckFunc {
-	return func(state *terraform.State) error {
-		return testPrimaryKeys(state, id, nil)
-	}
-}
-
-/*
-func t2Test(t *testing.T, d internal.Data) {
-
-	expected := []expected{
-		{
-			name: "A",
-			t:    "VARCHAR(20) UTF8",
-		},
-		{
-			name: "B",
-			t:    "DECIMAL(24,4)",
-		}, //  NOT NULL,
-		{
-			name: "C",
-			t:    "DECIMAL(19,0)",
-		}, //  DEFAULT 122,
-	}
-	testColumns(t, d, expected)
-	testForeignKeys(t, d, nil)
-	testPrimaryKeys(t, d, nil)
-}
-
-func t3Test(t *testing.T, d internal.Data) {
-
-	expected := []expected{
-		{
-			name: "MY_COUNT",
-			t:    "DECIMAL(18,0)",
-		},
-	}
-	testColumns(t, d, expected)
-	testForeignKeys(t, d, nil)
-	testPrimaryKeys(t, d, nil)
-}
-
-func t4Test(t *testing.T, d internal.Data) {
-
-	expected := []expected{
-		{
-			name: "A",
-			t:    "VARCHAR(20) UTF8",
-		},
-		{
-			name: "B", //  NOT NULL,
-			t:    "DECIMAL(24,4)",
-		},
-		{
-			name: "C", //  DEFAULT 122,
-			t:    "DECIMAL(18,0)",
-		},
-		{
-			name: "D",
-			t:    "DOUBLE",
-		},
-		{
-			name: "E", //  DEFAULT CURRENT_TIMESTAMP,
-			t:    "TIMESTAMP",
-		},
-		{
-			name: "F",
-			t:    "BOOLEAN",
-		},
-	}
-	testColumns(t, d, expected)
-	testForeignKeys(t, d, nil)
-	testPrimaryKeys(t, d, nil)
-}
-
-func t5Test(t *testing.T, d internal.Data) {
-	expected := []expected{
-		{
-			name: "ID",
-			t:    "DECIMAL(18,0)",
-		},
-		{
-			name: "A",
-			t:    "VARCHAR(20) UTF8",
-		},
-		{
-			name: "B",
-			t:    "DECIMAL(24,4)",
-		},
-		{
-			name: "C",
-			t:    "DECIMAL(18,0)",
-		},
-		{
-			name: "D",
-			t:    "DOUBLE",
-		},
-		{
-			name: "E",
-			t:    "TIMESTAMP",
-		},
-		{
-			name: "F",
-			t:    "BOOLEAN",
-		},
-		{
-			name: "G",
-			t:    "DOUBLE",
-		},
-	}
-	testColumns(t, d, expected)
-	testForeignKeys(t, d, nil)
-	testPrimaryKeys(t, d, map[string]interface{}{
-		"id": 0,
-	})
-}
-
-func t6Test(t *testing.T, d internal.Data) {
-	expected := []expected{
-		{
-			name: "ORDER_ID",
-			t:    "DECIMAL(18,0)",
-		},
-		{
-			name: "ORDER_PRICE",
-			t:    "DOUBLE",
-		},
-		{
-			name: "ORDER_DATE",
-			t:    "DATE",
-		},
-		{
-			name: "COUNTRY",
-			t:    "VARCHAR(40) UTF8",
-		},
-	}
-	testColumns(t, d, expected)
-	testForeignKeys(t, d, nil)
-	testPrimaryKeys(t, d, nil)
-}
-
-func t7Test(t *testing.T, d internal.Data) {
-	expected := []expected{
-		{
-			name: "A",
-			t:    "VARCHAR(20) UTF8",
-		},
-		{
-			name: "B",
-			t:    "DECIMAL(24,4)", // NOT NULL,
-		},
-		{
-			name: "C",
-			t:    "DECIMAL(18,0)", // DEFAULT 122,
-		},
-		{
-			name: "D",
-			t:    "DOUBLE",
-		},
-		{
-			name: "E",
-			t:    "TIMESTAMP", // DEFAULT CURRENT_TIMESTAMP,
-		},
-		{
-			name: "F",
-			t:    "BOOLEAN",
-		},
-	}
-	testColumns(t, d, expected)
-	testForeignKeys(t, d, nil)
-	testPrimaryKeys(t, d, nil)
-}
-
-func t8Test(t *testing.T, d internal.Data) {
-	expected := []expected{
-		{
-			name: "REF_ID",
-			t:    "DECIMAL(18,0)",
-		},
-		{
-			name: "B",
-			t:    "VARCHAR(20) UTF8",
-		},
-	}
-	testColumns(t, d, expected)
-	testForeignKeys(t, d, map[string]interface{}{
-		"ref_id": 0,
-	})
-	testPrimaryKeys(t, d, nil)
-}
-*/
-
-func testWithResource(state *terraform.State, id string, f func(ds *terraform.ResourceState) error) error {
+func testDatasource(state *terraform.State, id string) (*terraform.ResourceState, error) {
 
 	ds, ok := state.RootModule().Resources[id]
 	if !ok {
-		return fmt.Errorf("Datasource not found: %s", id)
+		return nil, fmt.Errorf("Datasource not found: %s", id)
 	}
 
-	return f(ds)
+	return ds, nil
 }
 
-func testForeignKeys(state *terraform.State, id string, expected map[string]int) error {
+func testForeignKeys(id string, expected map[string]int) resource.TestCheckFunc {
 
-	return testWithResource(state, id, func(ds *terraform.ResourceState) error {
+	if expected == nil {
+		expected = map[string]int{}
+	}
 
-		countString, ok := ds.Primary.Attributes["foreign_key_indices.#"]
-		if !ok {
-			return fmt.Errorf("No count of foreign_key_indices found: %s", id)
-		}
-
-		count, err := strconv.Atoi(countString)
+	return func(state *terraform.State) error {
+		ds, err := testDatasource(state, id)
 		if err != nil {
 			return err
 		}
 
-		if count != len(expected) {
-			return fmt.Errorf("Expected %d foreign keys: %d", len(expected), count)
-		}
+		actual := map[string]int{}
 
-		for ek, expectedIndex := range expected {
-			actualIndexString, ok := ds.Primary.Attributes[fmt.Sprintf("foreign_key_indices.%s", ek)]
-			if !ok {
-				return fmt.Errorf("Not found: %s.foreign_key_indices.%s", id, ek)
-			}
-
-			actualIndex, err := strconv.Atoi(actualIndexString)
-			if err != nil {
-				return err
-			}
-
-			if expectedIndex != actualIndex {
-				return fmt.Errorf("Expected foreign key to have index %d: %d", expectedIndex, actualIndex)
+		for k, v := range ds.Primary.Attributes {
+			if strings.HasPrefix(k, "foreign_key_indices.") && !strings.HasSuffix(k, ".%") {
+				actualIndex, err := strconv.Atoi(v)
+				if err != nil {
+					return err
+				}
+				nonPrefixedKey := k[len("foreign_key_indices."):]
+				actual[nonPrefixedKey] = actualIndex
 			}
 		}
+
+		if !reflect.DeepEqual(&actual, &expected) {
+			return fmt.Errorf(`Foreign Key mismatch:
+	Expected %#v
+	Actual   %#v`, expected, actual)
+		}
+
 		return nil
-	})
+	}
 }
 
-func testPrimaryKeys(state *terraform.State, id string, expected map[string]int) error {
+func testPrimaryKeys(id string, expected map[string]int) resource.TestCheckFunc {
 
-	return testWithResource(state, id, func(ds *terraform.ResourceState) error {
-		countString, ok := ds.Primary.Attributes["primary_key_indices.#"]
-		if !ok {
-			return fmt.Errorf("primary_key_indices.# not found %s", id)
-		}
+	if expected == nil {
+		expected = map[string]int{}
+	}
 
-		count, err := strconv.Atoi(countString)
+	return func(state *terraform.State) error {
+
+		ds, err := testDatasource(state, id)
 		if err != nil {
 			return err
 		}
 
-		if count != len(expected) {
-			return fmt.Errorf("Expected %d primary keys: %d", len(expected), count)
+		actual := map[string]int{}
+
+		for k, v := range ds.Primary.Attributes {
+			if strings.HasPrefix(k, "primary_key_indices.") && !strings.HasSuffix(k, ".%") {
+				actualIndex, err := strconv.Atoi(v)
+				if err != nil {
+					return err
+				}
+				nonPrefixedKey := k[len("primary_key_indices."):]
+				actual[nonPrefixedKey] = actualIndex
+			}
 		}
 
-		for ek, expectedIndex := range expected {
-			actualIndexString, ok := ds.Primary.Attributes[fmt.Sprintf("primary_key_indices.%s", ek)]
-			if !ok {
-				return fmt.Errorf("Not found: %s.primary_key_indices.%s", id, ek)
-			}
-			actualIndex, err := strconv.Atoi(actualIndexString)
-			if err != nil {
-				return err
-			}
-
-			if expectedIndex != actualIndex {
-				return fmt.Errorf("Expected primary key to have index %d: %d", expectedIndex, actualIndex)
-			}
+		if !reflect.DeepEqual(&actual, &expected) {
+			return fmt.Errorf(`Primary Key mismatch:
+	Expected %#v
+	Actual   %#v`, expected, actual)
 		}
+
 		return nil
-	})
+	}
 }
