@@ -41,6 +41,11 @@ func Provider() terraform.ResourceProvider {
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("EXAHOST", nil),
 			},
+			"port": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  8563,
+			},
 		},
 	}
 	provider.ConfigureFunc = func(d *schema.ResourceData) (interface{}, error) {
@@ -60,7 +65,7 @@ func providerConfigure(d internal.Data) (interface{}, error) {
 
 	conf := exasol.ConnConf{
 		Host:     d.Get("ip").(string),
-		Port:     8563,
+		Port:     uint16(d.Get("port").(int)),
 		Username: d.Get("username").(string),
 		Password: d.Get("password").(string),
 	}
