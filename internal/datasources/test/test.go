@@ -14,6 +14,13 @@ var (
 	DefaultAccProviders map[string]terraform.ResourceProvider
 )
 
+type ObjectTest struct {
+	ResourceName string
+	DbName       string
+	Stmt         string
+	Config       string
+}
+
 func init() {
 	testAccProvider := resourceprovider.Provider().(*schema.Provider)
 	DefaultAccProviders = map[string]terraform.ResourceProvider{

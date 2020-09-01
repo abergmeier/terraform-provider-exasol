@@ -19,14 +19,16 @@ var (
 	tableSuffix = acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 	testDefs    = []tableTest{
 		{
-			resourceName: "t1",
-			tableName:    "t1_" + tableSuffix,
-			stmt: fmt.Sprintf(`CREATE TABLE t1_%s (a VARCHAR(20),
+			ObjectTest: test.ObjectTest{
+				ResourceName: "t1",
+				DbName:       "t1_" + tableSuffix,
+				Stmt: fmt.Sprintf(`CREATE TABLE t1_%s (a VARCHAR(20),
 			b DECIMAL(24,4) NOT NULL,
 			c DECIMAL DEFAULT 122,
 			d DOUBLE,
 			e TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			f BOOL)`, tableSuffix),
+			},
 			expectedColumns: []expectedColumns{
 				{
 					name: "A",
@@ -55,9 +57,11 @@ var (
 			},
 		},
 		{
-			resourceName: "t2",
-			tableName:    "t2_" + tableSuffix,
-			stmt:         fmt.Sprintf(`CREATE TABLE t2_%s AS SELECT a,b,c+1 AS c FROM t1_%s`, tableSuffix, tableSuffix),
+			ObjectTest: test.ObjectTest{
+				ResourceName: "t2",
+				DbName:       "t2_" + tableSuffix,
+				Stmt:         fmt.Sprintf(`CREATE TABLE t2_%s AS SELECT a,b,c+1 AS c FROM t1_%s`, tableSuffix, tableSuffix),
+			},
 			expectedColumns: []expectedColumns{
 				{
 					name: "A",
@@ -74,9 +78,11 @@ var (
 			},
 		},
 		{
-			resourceName: "t3",
-			tableName:    "t3_" + tableSuffix,
-			stmt:         fmt.Sprintf(`CREATE TABLE t3_%s AS SELECT count(*) AS my_count FROM t1_%s WITH NO DATA`, tableSuffix, tableSuffix),
+			ObjectTest: test.ObjectTest{
+				ResourceName: "t3",
+				DbName:       "t3_" + tableSuffix,
+				Stmt:         fmt.Sprintf(`CREATE TABLE t3_%s AS SELECT count(*) AS my_count FROM t1_%s WITH NO DATA`, tableSuffix, tableSuffix),
+			},
 			expectedColumns: []expectedColumns{
 				{
 					name: "MY_COUNT",
@@ -85,9 +91,11 @@ var (
 			},
 		},
 		{
-			resourceName: "t4",
-			tableName:    "t4_" + tableSuffix,
-			stmt:         fmt.Sprintf(`CREATE TABLE t4_%s LIKE t1_%s`, tableSuffix, tableSuffix),
+			ObjectTest: test.ObjectTest{
+				ResourceName: "t4",
+				DbName:       "t4_" + tableSuffix,
+				Stmt:         fmt.Sprintf(`CREATE TABLE t4_%s LIKE t1_%s`, tableSuffix, tableSuffix),
+			},
 			expectedColumns: []expectedColumns{
 				{
 					name: "A",
@@ -116,12 +124,14 @@ var (
 			},
 		},
 		{
-			resourceName: "t5",
-			tableName:    "t5_" + tableSuffix,
-			stmt: fmt.Sprintf(`CREATE TABLE t5_%s (id int IDENTITY PRIMARY KEY,
+			ObjectTest: test.ObjectTest{
+				ResourceName: "t5",
+				DbName:       "t5_" + tableSuffix,
+				Stmt: fmt.Sprintf(`CREATE TABLE t5_%s (id int IDENTITY PRIMARY KEY,
 				LIKE t1_%s INCLUDING DEFAULTS,
 				g DOUBLE,
 				DISTRIBUTE BY a,b)`, tableSuffix, tableSuffix),
+			},
 			expectedColumns: []expectedColumns{
 				{
 					name: "ID",
@@ -158,13 +168,15 @@ var (
 			},
 		},
 		{
-			resourceName: "t6",
-			tableName:    "t6_" + tableSuffix,
-			stmt: fmt.Sprintf(`CREATE TABLE t6_%s (order_id INT,
+			ObjectTest: test.ObjectTest{
+				ResourceName: "t6",
+				DbName:       "t6_" + tableSuffix,
+				Stmt: fmt.Sprintf(`CREATE TABLE t6_%s (order_id INT,
 					order_price DOUBLE,
 					order_date DATE,
 					country VARCHAR(40),
 					PARTITION BY order_date)`, tableSuffix),
+			},
 			expectedColumns: []expectedColumns{
 				{
 					name: "ORDER_ID",
@@ -185,9 +197,11 @@ var (
 			},
 		},
 		{
-			resourceName: "t7",
-			tableName:    "t7_" + tableSuffix,
-			stmt:         fmt.Sprintf(`SELECT * INTO TABLE t7_%s FROM t1_%s`, tableSuffix, tableSuffix),
+			ObjectTest: test.ObjectTest{
+				ResourceName: "t7",
+				DbName:       "t7_" + tableSuffix,
+				Stmt:         fmt.Sprintf(`SELECT * INTO TABLE t7_%s FROM t1_%s`, tableSuffix, tableSuffix),
+			},
 			expectedColumns: []expectedColumns{
 				{
 					name: "A",
@@ -216,9 +230,11 @@ var (
 			},
 		},
 		{
-			resourceName: "t8",
-			tableName:    "t8_" + tableSuffix,
-			stmt:         fmt.Sprintf(`CREATE TABLE t8_%s (ref_id int CONSTRAINT FK_T5 REFERENCES t5_%s (id) DISABLE, b VARCHAR(20))`, tableSuffix, tableSuffix),
+			ObjectTest: test.ObjectTest{
+				ResourceName: "t8",
+				DbName:       "t8_" + tableSuffix,
+				Stmt:         fmt.Sprintf(`CREATE TABLE t8_%s (ref_id int CONSTRAINT FK_T5 REFERENCES t5_%s (id) DISABLE, b VARCHAR(20))`, tableSuffix, tableSuffix),
+			},
 			expectedColumns: []expectedColumns{
 				{
 					name: "REF_ID",
@@ -234,10 +250,7 @@ var (
 )
 
 type tableTest struct {
-	resourceName    string
-	tableName       string
-	stmt            string
-	config          string
+	test.ObjectTest
 	expectedColumns []expectedColumns
 }
 
@@ -252,7 +265,7 @@ func TestAccExasolTable_basic(t *testing.T) {
 	defer locked.Unlock()
 
 	for i, v := range testDefs {
-		testDefs[i].config = fmt.Sprintf(`%s
+		testDefs[i].ObjectTest.Config = fmt.Sprintf(`%s
 data "exasol_physical_schema" "dummy" {
 	name = "%s"
 }
@@ -260,7 +273,7 @@ data "exasol_table" "%s" {
 	name = "%s"
 	schema = data.exasol_physical_schema.dummy.name
 }
-`, test.ProviderInHCL(locked), schemaName, v.resourceName, v.tableName)
+`, test.ProviderInHCL(locked), schemaName, v.ObjectTest.ResourceName, v.ObjectTest.DbName)
 	}
 
 	basicSetup(t, locked.Conn)
@@ -270,7 +283,7 @@ data "exasol_table" "%s" {
 		Providers: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testDefs[0].config,
+				Config: testDefs[0].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t1", testDefs[0].expectedColumns),
 					testPrimaryKeys("data.exasol_table.t1", nil),
@@ -285,7 +298,7 @@ data "exasol_table" "%s" {
 		Providers: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testDefs[1].config,
+				Config: testDefs[1].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t2", testDefs[1].expectedColumns),
 					testPrimaryKeys("data.exasol_table.t2", nil),
@@ -300,7 +313,7 @@ data "exasol_table" "%s" {
 		Providers: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testDefs[2].config,
+				Config: testDefs[2].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t3", testDefs[2].expectedColumns),
 					testPrimaryKeys("data.exasol_table.t3", nil),
@@ -315,7 +328,7 @@ data "exasol_table" "%s" {
 		Providers: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testDefs[3].config,
+				Config: testDefs[3].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t4", testDefs[3].expectedColumns),
 					testPrimaryKeys("data.exasol_table.t4", nil),
@@ -330,7 +343,7 @@ data "exasol_table" "%s" {
 		Providers: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testDefs[4].config,
+				Config: testDefs[4].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t5", testDefs[4].expectedColumns),
 					testPrimaryKeys("data.exasol_table.t5", map[string]int{
@@ -347,7 +360,7 @@ data "exasol_table" "%s" {
 		Providers: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testDefs[5].config,
+				Config: testDefs[5].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t6", testDefs[5].expectedColumns),
 					testPrimaryKeys("data.exasol_table.t6", nil),
@@ -362,7 +375,7 @@ data "exasol_table" "%s" {
 		Providers: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testDefs[6].config,
+				Config: testDefs[6].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t7", testDefs[6].expectedColumns),
 					testPrimaryKeys("data.exasol_table.t7", nil),
@@ -377,7 +390,7 @@ data "exasol_table" "%s" {
 		Providers: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testDefs[7].config,
+				Config: testDefs[7].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t8", testDefs[7].expectedColumns),
 					testPrimaryKeys("data.exasol_table.t8", nil),
@@ -394,9 +407,9 @@ func basicSetup(t *testing.T, c *exasol.Conn) {
 
 	for _, testDef := range testDefs {
 
-		stmt := testDef.stmt
+		stmt := testDef.ObjectTest.Stmt
 
-		tryDropTable(testDef.tableName, c)
+		tryDropTable(testDef.ObjectTest.DbName, c)
 
 		_, err := c.Execute(stmt, nil, schemaName)
 		if err != nil {
