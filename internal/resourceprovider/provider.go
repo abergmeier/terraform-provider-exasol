@@ -3,6 +3,7 @@ package resourceprovider
 import (
 	"github.com/abergmeier/terraform-exasol/internal"
 	"github.com/abergmeier/terraform-exasol/internal/datasources"
+	dconn "github.com/abergmeier/terraform-exasol/internal/datasources/connection"
 	dtable "github.com/abergmeier/terraform-exasol/internal/datasources/table"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-exasol/internal/resources"
@@ -15,7 +16,7 @@ import (
 func Provider() terraform.ResourceProvider {
 	provider := &schema.Provider{
 		DataSourcesMap: map[string]*schema.Resource{
-			"exasol_connection":      datasources.ConnectionResource(),
+			"exasol_connection":      dconn.Resource(),
 			"exasol_physical_schema": datasources.PhysicalSchema(),
 			"exasol_table":           dtable.Resource(),
 		},

@@ -1,4 +1,4 @@
-package datasources
+package connection
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ func TestReadConnection(t *testing.T) {
 		},
 	}
 
-	err = readConnectionData(read, locked.Conn)
+	err = readData(read, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}

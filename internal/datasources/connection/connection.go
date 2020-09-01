@@ -1,4 +1,4 @@
-package datasources
+package connection
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-func ConnectionResource() *schema.Resource {
+func Resource() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -29,18 +29,18 @@ func ConnectionResource() *schema.Resource {
 				Description: "User used with connection",
 			},
 		},
-		Read: readConnection,
+		Read: read,
 	}
 }
 
-func readConnection(d *schema.ResourceData, meta interface{}) error {
+func read(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
-	return readConnectionData(d, locked.Conn)
+	return readData(d, locked.Conn)
 }
 
-func readConnectionData(d internal.Data, c *exasol.Conn) error {
+func readData(d internal.Data, c *exasol.Conn) error {
 	name := d.Get("name").(string)
 
 	res, err := c.FetchSlice("SELECT CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
