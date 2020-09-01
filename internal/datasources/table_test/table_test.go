@@ -166,6 +166,9 @@ var (
 					t:    "DOUBLE",
 				},
 			},
+			expectedPrimaryKeys: map[string]int{
+				"id": 0,
+			},
 		},
 		{
 			ObjectTest: test.ObjectTest{
@@ -245,13 +248,18 @@ var (
 					t:    "VARCHAR(20) UTF8",
 				},
 			},
+			expectedForeignKeys: map[string]int{
+				"ref_id": 0,
+			},
 		},
 	}
 )
 
 type tableTest struct {
 	test.ObjectTest
-	expectedColumns []expectedColumns
+	expectedColumns     []expectedColumns
+	expectedPrimaryKeys map[string]int
+	expectedForeignKeys map[string]int
 }
 
 type expectedColumns struct {
@@ -286,8 +294,8 @@ data "exasol_table" "%s" {
 				Config: testDefs[0].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t1", testDefs[0].expectedColumns),
-					testPrimaryKeys("data.exasol_table.t1", nil),
-					testForeignKeys("data.exasol_table.t1", nil),
+					testPrimaryKeys("data.exasol_table.t1", testDefs[0].expectedPrimaryKeys),
+					testForeignKeys("data.exasol_table.t1", testDefs[0].expectedForeignKeys),
 				),
 			},
 		},
@@ -301,8 +309,8 @@ data "exasol_table" "%s" {
 				Config: testDefs[1].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t2", testDefs[1].expectedColumns),
-					testPrimaryKeys("data.exasol_table.t2", nil),
-					testForeignKeys("data.exasol_table.t2", nil),
+					testPrimaryKeys("data.exasol_table.t2", testDefs[1].expectedPrimaryKeys),
+					testForeignKeys("data.exasol_table.t2", testDefs[1].expectedForeignKeys),
 				),
 			},
 		},
@@ -316,8 +324,8 @@ data "exasol_table" "%s" {
 				Config: testDefs[2].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t3", testDefs[2].expectedColumns),
-					testPrimaryKeys("data.exasol_table.t3", nil),
-					testForeignKeys("data.exasol_table.t3", nil),
+					testPrimaryKeys("data.exasol_table.t3", testDefs[2].expectedPrimaryKeys),
+					testForeignKeys("data.exasol_table.t3", testDefs[2].expectedForeignKeys),
 				),
 			},
 		},
@@ -331,8 +339,8 @@ data "exasol_table" "%s" {
 				Config: testDefs[3].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t4", testDefs[3].expectedColumns),
-					testPrimaryKeys("data.exasol_table.t4", nil),
-					testForeignKeys("data.exasol_table.t4", nil),
+					testPrimaryKeys("data.exasol_table.t4", testDefs[3].expectedPrimaryKeys),
+					testForeignKeys("data.exasol_table.t4", testDefs[3].expectedForeignKeys),
 				),
 			},
 		},
@@ -346,10 +354,8 @@ data "exasol_table" "%s" {
 				Config: testDefs[4].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t5", testDefs[4].expectedColumns),
-					testPrimaryKeys("data.exasol_table.t5", map[string]int{
-						"id": 0,
-					}),
-					testForeignKeys("data.exasol_table.t5", nil),
+					testPrimaryKeys("data.exasol_table.t5", testDefs[4].expectedPrimaryKeys),
+					testForeignKeys("data.exasol_table.t5", testDefs[4].expectedForeignKeys),
 				),
 			},
 		},
@@ -363,8 +369,8 @@ data "exasol_table" "%s" {
 				Config: testDefs[5].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t6", testDefs[5].expectedColumns),
-					testPrimaryKeys("data.exasol_table.t6", nil),
-					testForeignKeys("data.exasol_table.t6", nil),
+					testPrimaryKeys("data.exasol_table.t6", testDefs[5].expectedPrimaryKeys),
+					testForeignKeys("data.exasol_table.t6", testDefs[5].expectedForeignKeys),
 				),
 			},
 		},
@@ -378,8 +384,8 @@ data "exasol_table" "%s" {
 				Config: testDefs[6].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t7", testDefs[6].expectedColumns),
-					testPrimaryKeys("data.exasol_table.t7", nil),
-					testForeignKeys("data.exasol_table.t7", nil),
+					testPrimaryKeys("data.exasol_table.t7", testDefs[6].expectedPrimaryKeys),
+					testForeignKeys("data.exasol_table.t7", testDefs[6].expectedForeignKeys),
 				),
 			},
 		},
@@ -393,10 +399,8 @@ data "exasol_table" "%s" {
 				Config: testDefs[7].ObjectTest.Config,
 				Check: resource.ComposeTestCheckFunc(
 					testColumns("data.exasol_table.t8", testDefs[7].expectedColumns),
-					testPrimaryKeys("data.exasol_table.t8", nil),
-					testForeignKeys("data.exasol_table.t8", map[string]int{
-						"ref_id": 0,
-					}),
+					testPrimaryKeys("data.exasol_table.t8", testDefs[7].expectedPrimaryKeys),
+					testForeignKeys("data.exasol_table.t8", testDefs[7].expectedForeignKeys),
 				),
 			},
 		},
