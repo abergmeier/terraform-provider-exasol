@@ -14,11 +14,11 @@ ROOT_DIR=$(dirname "${SCRIPT_DIR}")
 (
     cd "${ROOT_DIR}/cmd/terraform-provider-exasol"
     go build
-    mv terraform-provider-exasol "${ROOT_DIR}/deployment/terraform-provider-exasol"
+    mv terraform-provider-exasol "${ROOT_DIR}/deployments/terraform-provider-exasol"
 )
 
 (
-    cd "${ROOT_DIR}/deployment"
+    cd "${ROOT_DIR}/deployments"
     terraform init
     terraform apply
     terraform destroy

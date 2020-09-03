@@ -34,11 +34,11 @@ terraform-provider-exasol
 
 ## Status
 
-| Supported         | Implemeted as          | Examples                                             |
-| ---               | ---                    | ---                                                  |
-| Connection        | exasol_connection      | [deployment/connection.tf](deployment/connection.tf) |
-| Schema (physical) | exasol_physical_schema | [deployment/schema.tf](deployment/schema.tf)         |
-| Table             | exasol_table           | [deployment/table.tf](deployment/table.tf)         |
+| Supported         | Implemented as          | Examples                                               |
+| ---               | ---                     | ---                                                    |
+| Connection        | exasol_connection       | [deployments/connection.tf](deployments/connection.tf) |
+| Schema (physical) | exasol_physical_schema  | [deployments/schema.tf](deployments/schema.tf)         |
+| Table             | exasol_table            | [deployments/table.tf](deployments/table.tf)           |
 
 
 
