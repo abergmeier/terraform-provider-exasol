@@ -1,3 +1,3 @@
-data "exa_connection" "dummy" {
+data "exasol_connection" "dummy" {
     name = "dummy"
 }
