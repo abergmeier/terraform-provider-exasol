@@ -10,7 +10,8 @@ Go [here](https://registry.terraform.io/providers/abergmeier/exasol/latest) for 
 
 To use the provider, you currently have to add it to your terraform definitions:
 
-```
+```terraform
+# Snippet of provider.tf
 terraform {
   required_providers {
     exasol = {
