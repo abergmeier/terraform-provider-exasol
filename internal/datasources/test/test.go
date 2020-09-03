@@ -3,15 +3,14 @@ package test
 import (
 	"fmt"
 
-	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-exasol/internal/resourceprovider"
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 var (
 	// DefaultAccProviders are all Providers AKA exasol
-	DefaultAccProviders map[string]terraform.ResourceProvider
+	DefaultAccProviders map[string]*schema.Provider
 )
 
 type ObjectTest struct {
@@ -22,8 +21,8 @@ type ObjectTest struct {
 }
 
 func init() {
-	testAccProvider := resourceprovider.Provider().(*schema.Provider)
-	DefaultAccProviders = map[string]terraform.ResourceProvider{
+	testAccProvider := resourceprovider.Provider()
+	DefaultAccProviders = map[string]*schema.Provider{
 		"exasol": testAccProvider,
 	}
 }

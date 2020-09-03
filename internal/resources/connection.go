@@ -9,7 +9,7 @@ import (
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-exasol/pkg/argument"
 	"github.com/grantstreetgroup/go-exasol-client"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func ConnectionResource() *schema.Resource {

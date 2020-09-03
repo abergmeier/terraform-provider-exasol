@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/grantstreetgroup/go-exasol-client"
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 type TableReader struct {

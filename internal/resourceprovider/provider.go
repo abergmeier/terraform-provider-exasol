@@ -9,11 +9,10 @@ import (
 	"github.com/abergmeier/terraform-exasol/internal/resources"
 	rtable "github.com/abergmeier/terraform-exasol/internal/resources/table"
 	"github.com/grantstreetgroup/go-exasol-client"
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func Provider() terraform.ResourceProvider {
+func Provider() *schema.Provider {
 	provider := &schema.Provider{
 		DataSourcesMap: map[string]*schema.Resource{
 			"exasol_connection":      dconn.Resource(),
