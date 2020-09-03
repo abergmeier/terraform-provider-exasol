@@ -7,7 +7,7 @@ import (
 	"github.com/grantstreetgroup/go-exasol-client"
 )
 
-func MustCreateTestClient() *exaprovider.Client {
+func MustCreateTestConf() exasol.ConnConf {
 	exaHost := os.Getenv("EXAHOST")
 	if exaHost == "" {
 		println("Tests need EXAHOST to run")
@@ -26,13 +26,15 @@ func MustCreateTestClient() *exaprovider.Client {
 		exaPWD = "exasol"
 	}
 
-	conf := exasol.ConnConf{
+	return exasol.ConnConf{
 		Host:     exaHost,
 		Port:     8563,
 		Username: exaUID,
 		Password: exaPWD,
-		LogLevel: "debug",
+		//LogLevel: "debug",
 	}
+}
 
-	return exaprovider.NewClient(conf)
+func MustCreateTestClient() *exaprovider.Client {
+	return exaprovider.NewClient(MustCreateTestConf())
 }
