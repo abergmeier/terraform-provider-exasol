@@ -41,6 +41,7 @@ terraform-provider-exasol
 | Supported         | Implemented as          | Examples                                               |
 | ---               | ---                     | ---                                                    |
 | Connection        | exasol_connection       | [deployments/connection.tf](deployments/connection.tf) |
+| Role              | exasol_role             | [deployments/role.tf](deployments/role.tf)             |
 | Schema (physical) | exasol_physical_schema  | [deployments/schema.tf](deployments/schema.tf)         |
 | Table             | exasol_table            | [deployments/table.tf](deployments/table.tf)           |
 
@@ -49,7 +50,6 @@ terraform-provider-exasol
 | Unsupported      | Possible implementation as |
 | ---              | ---                        |
 | Function         | exasol_function            |
-| Role             | exasol_role                |
 | Schema (virtual) | exasol_virtual_schema      |
 | Script           | exasol_script              |
 | User             | exasol_user                |

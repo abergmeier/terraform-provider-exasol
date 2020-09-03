@@ -8,13 +8,15 @@ ROOT_DIR=$(dirname "${SCRIPT_DIR}")
 
 (
     cd "${ROOT_DIR}"
+    #TF_LOG=trace
     TF_ACC=true go test ./... -v
 )
 
 (
     cd "${ROOT_DIR}/cmd/terraform-provider-exasol"
     go build
-    mv terraform-provider-exasol "${ROOT_DIR}/deployments/terraform-provider-exasol"
+    mkdir -p "${ROOT_DIR}/deployments/.terraform/plugins/registry.terraform.io/abergmeier/exasol/0.0.6/linux_amd64"
+    mv terraform-provider-exasol "${ROOT_DIR}/deployments/.terraform/plugins/registry.terraform.io/abergmeier/exasol/0.0.6/linux_amd64/terraform-provider-exasol_v0.0.6"
 )
 
 (
