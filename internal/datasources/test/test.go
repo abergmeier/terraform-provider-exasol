@@ -11,6 +11,7 @@ import (
 var (
 	// DefaultAccProviders are all Providers AKA exasol
 	DefaultAccProviders map[string]*schema.Provider
+	TestAccProvider     *schema.Provider
 )
 
 type ObjectTest struct {
@@ -21,9 +22,9 @@ type ObjectTest struct {
 }
 
 func init() {
-	testAccProvider := resourceprovider.Provider()
+	TestAccProvider = resourceprovider.Provider()
 	DefaultAccProviders = map[string]*schema.Provider{
-		"exasol": testAccProvider,
+		"exasol": TestAccProvider,
 	}
 }
 
