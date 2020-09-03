@@ -28,10 +28,10 @@ func init() {
 	}
 }
 
-func ProviderInHCL(locked *exaprovider.Locked) string {
+func HCLProviderFromConf(conf *exasol.ConnConf) string {
 	return fmt.Sprintf(`provider "exasol" {
-	ip       = "%s"
-	username = "%s"
-	password = "%s"
-}`, locked.Conn.Conf.Host, locked.Conn.Conf.Username, locked.Conn.Conf.Password)
+		ip       = "%s"
+		username = "%s"
+		password = "%s"
+	}`, conf.Host, conf.Username, conf.Password)
 }

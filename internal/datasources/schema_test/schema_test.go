@@ -23,7 +23,7 @@ func TestAccExasolSchema_basic(t *testing.T) {
 data "exasol_physical_schema" "dummy" {
 	name = "%s"
 }
-`, test.ProviderInHCL(locked), schemaName),
+`, test.HCLProviderFromConf(&locked.Conn.Conf), schemaName),
 				Check: resource.ComposeTestCheckFunc(
 					testName("data.exasol_physical_schema.dummy"),
 				),
