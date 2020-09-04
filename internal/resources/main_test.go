@@ -13,7 +13,13 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	exaClient = internal.MustCreateTestClient()
 
-	os.Exit(m.Run())
+	os.Exit(testRun(m))
+}
+
+func testRun(m *testing.M) int {
+	exaClient = internal.MustCreateTestClient()
+	defer exaClient.Close()
+
+	return m.Run()
 }

@@ -19,7 +19,13 @@ var (
 )
 
 func TestMain(m *testing.M) {
+
+	os.Exit(testRun(m))
+}
+
+func testRun(m *testing.M) int {
 	exaClient = internal.MustCreateTestClient()
+	defer exaClient.Close()
 
 	func() {
 		locked := exaClient.Lock()
@@ -35,5 +41,5 @@ func TestMain(m *testing.M) {
 		locked.Conn.Commit()
 	}()
 
-	os.Exit(m.Run())
+	return m.Run()
 }
