@@ -18,3 +18,9 @@ func Rename(c *exasol.Conn, t, old, new, schema string) error {
 	}
 	return err
 }
+
+// RenameGlobal changes the global name on the Database
+func RenameGlobal(c *exasol.Conn, t, old, new string) error {
+
+	return Rename(c, t, old, new, "")
+}

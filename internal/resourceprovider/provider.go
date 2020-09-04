@@ -7,6 +7,7 @@ import (
 	dtable "github.com/abergmeier/terraform-exasol/internal/datasources/table"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-exasol/internal/resources"
+	rrole "github.com/abergmeier/terraform-exasol/internal/resources/role"
 	rtable "github.com/abergmeier/terraform-exasol/internal/resources/table"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -22,6 +23,7 @@ func Provider() *schema.Provider {
 		ResourcesMap: map[string]*schema.Resource{
 			"exasol_connection":      resources.ConnectionResource(),
 			"exasol_physical_schema": resources.PhysicalSchema(),
+			"exasol_role":            rrole.Resource(),
 			"exasol_table":           rtable.Resource(),
 		},
 		Schema: map[string]*schema.Schema{
