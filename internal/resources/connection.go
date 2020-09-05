@@ -99,8 +99,7 @@ func createConnection(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	locked.Conn.Commit()
-	return nil
+	return locked.Conn.Commit()
 }
 
 func createConnectionData(d internal.Data, c *exasol.Conn) error {
@@ -140,8 +139,7 @@ func deleteConnection(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	locked.Conn.Commit()
-	return nil
+	return locked.Conn.Commit()
 }
 
 func deleteConnectionData(d internal.Data, c *exasol.Conn) error {
@@ -204,8 +202,7 @@ func updateConnection(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	locked.Conn.Commit()
-	return nil
+	return locked.Conn.Commit()
 }
 
 func updateConnectionData(d internal.Data, c *exasol.Conn) error {

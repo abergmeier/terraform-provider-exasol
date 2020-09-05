@@ -41,8 +41,7 @@ func createPhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	locked.Conn.Commit()
-	return nil
+	return locked.Conn.Commit()
 }
 
 func createPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
@@ -70,8 +69,7 @@ func deletePhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	locked.Conn.Commit()
-	return nil
+	return locked.Conn.Commit()
 }
 
 func deletePhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
@@ -127,7 +125,10 @@ func importPhysicalSchema(d *schema.ResourceData, meta interface{}) ([]*schema.R
 	if err != nil {
 		return nil, err
 	}
-	locked.Conn.Commit()
+	err = locked.Conn.Commit()
+	if err != nil {
+		return nil, err
+	}
 	return []*schema.ResourceData{d}, nil
 }
 
@@ -183,8 +184,7 @@ func updatePhysicalSchema(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	locked.Conn.Commit()
-	return nil
+	return locked.Conn.Commit()
 }
 
 func updatePhysicalSchemaData(d internal.Data, c *exasol.Conn) error {

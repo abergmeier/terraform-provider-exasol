@@ -40,8 +40,7 @@ func create(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	locked.Conn.Commit()
-	return nil
+	return locked.Conn.Commit()
 }
 
 func createData(d internal.Data, c *exasol.Conn) error {
@@ -68,8 +67,7 @@ func delete(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	locked.Conn.Commit()
-	return nil
+	return locked.Conn.Commit()
 }
 
 func deleteData(d internal.Data, c *exasol.Conn) error {
@@ -124,7 +122,10 @@ func imp(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, erro
 	if err != nil {
 		return nil, err
 	}
-	locked.Conn.Commit()
+	err = locked.Conn.Commit()
+	if err != nil {
+		return nil, err
+	}
 	return []*schema.ResourceData{d}, nil
 }
 
@@ -155,8 +156,7 @@ func update(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
-	locked.Conn.Commit()
-	return nil
+	return locked.Conn.Commit()
 }
 
 func updateData(d internal.Data, c *exasol.Conn) error {
