@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 	defer func() {
 		locked := exaClient.Lock()
 		defer locked.Unlock()
-		locked.Conn.Execute(fmt.Sprintf("DROP SCHEMA %s", schemaName))
+		locked.Conn.Execute(fmt.Sprintf("DROP SCHEMA %s CASCADE", schemaName))
 		locked.Conn.Commit()
 	}()
 
