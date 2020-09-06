@@ -1,6 +1,8 @@
 package exaprovider
 
 import (
+	"fmt"
+
 	"github.com/grantstreetgroup/go-exasol-client"
 )
 
@@ -21,12 +23,16 @@ func NewClient(conf exasol.ConnConf) *Client {
 	}
 
 	for i := 0; i != cap(c.conns); i++ {
-		conn := exasol.Connect(conf)
-		conn.DisableAutoCommit()
-		c.conns <- conn
+		c.conns <- newConnect(conf)
 	}
 
 	return c
+}
+
+func newConnect(conf exasol.ConnConf) *exasol.Conn {
+	conn := exasol.Connect(conf)
+	conn.DisableAutoCommit()
+	return conn
 }
 
 func (c *Client) Lock() *Locked {
@@ -38,7 +44,11 @@ func (c *Client) Lock() *Locked {
 
 func (l *Locked) Unlock() {
 	// Ensure that only explicitly committed operations stay
-	l.Conn.Rollback()
+	err := l.Conn.Rollback()
+	if err != nil {
+		fmt.Println("Rollback failed:", err)
+
+	}
 	*l.conns <- l.Conn
 	l.Conn = nil
 }
