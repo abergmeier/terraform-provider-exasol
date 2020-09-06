@@ -10,8 +10,7 @@ import (
 func MustCreateTestConf() exasol.ConnConf {
 	exaHost := os.Getenv("EXAHOST")
 	if exaHost == "" {
-		println("Tests need EXAHOST to run")
-		os.Exit(1)
+		panic("Tests need EXAHOST to run")
 	}
 
 	exaUID := os.Getenv("EXAUID")
