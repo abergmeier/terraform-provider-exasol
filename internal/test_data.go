@@ -15,6 +15,9 @@ func (d *TestData) Get(name string) interface{} {
 }
 
 func (d *TestData) Set(name string, value interface{}) error {
+	if d.Values == nil {
+		d.Values = map[string]interface{}{}
+	}
 	d.Values[name] = value
 	return nil
 }
