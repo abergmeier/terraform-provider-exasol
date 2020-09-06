@@ -155,14 +155,16 @@ func TestImportConnection(t *testing.T) {
 
 	name := t.Name()
 
-	imp := &internal.TestData{
+	deleteData := &internal.TestData{
 		Values: map[string]interface{}{
 			"name": name,
 		},
 	}
+	deleteConnectionData(deleteData, locked.Conn)
 
-	deleteConnectionData(imp, locked.Conn)
-	_, err := importConnectionData(imp, locked.Conn)
+	imp := &internal.TestData{}
+	imp.SetId(name)
+	err := importConnectionData(imp, locked.Conn)
 	if err == nil {
 		t.Fatal("Expected error from importConnectionData")
 	}
@@ -173,29 +175,26 @@ func TestImportConnection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ids, err := importConnectionData(imp, locked.Conn)
+	err = importConnectionData(imp, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
 
-	id := ids[0]
-
-	to := id.Get("to")
+	to := imp.Get("to")
 	toString, _ := to.(string)
-	if toString == "http://foo" {
-		t.Fatalf("Unexpected to: %#v", to)
+	if toString != "http://foo" {
+		t.Errorf("Expected to http://foo: %#v", to)
 	}
 
-	username := id.Get("username")
+	username := imp.Get("username")
 	usernameString, _ := username.(string)
-	if usernameString == "foo" {
-		t.Fatalf("Unexpected username: %#v", username)
+	if usernameString != "foo" {
+		t.Errorf("Expected username foo: %#v", username)
 	}
 
-	password := id.Get("password")
-	passwordString, _ := password.(string)
-	if passwordString == "bar" {
-		t.Fatalf("Unexpected password: %#v", password)
+	password := imp.Get("password")
+	if password != nil {
+		t.Errorf("Did not expect password: %#v", password)
 	}
 }
 

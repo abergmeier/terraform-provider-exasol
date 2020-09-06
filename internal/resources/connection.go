@@ -162,13 +162,21 @@ func importConnection(d *schema.ResourceData, meta interface{}) ([]*schema.Resou
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
-	return importConnectionData(d, locked.Conn)
-}
-
-func importConnectionData(d internal.Data, c *exasol.Conn) ([]*schema.ResourceData, error) {
-	name, err := argument.Name(d)
+	err := importConnectionData(d, locked.Conn)
 	if err != nil {
 		return nil, err
+	}
+	return []*schema.ResourceData{d}, nil
+}
+
+func importConnectionData(d internal.Data, c *exasol.Conn) error {
+	name := d.Id()
+	if name == "" {
+		return errors.New("Import expects id to be set")
+	}
+	err := d.Set("name", name)
+	if err != nil {
+		return err
 	}
 
 	res, err := c.FetchSlice("SELECT CONNECTION_NAME, CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
@@ -176,22 +184,18 @@ func importConnectionData(d internal.Data, c *exasol.Conn) ([]*schema.ResourceDa
 	}, "SYS")
 
 	if len(res) == 0 {
-		return nil, fmt.Errorf("Connection %s not found", name)
+		return fmt.Errorf("Connection %s not found", name)
 	}
 
-	rd := &schema.ResourceData{}
-
-	rd.Set("to", res[0][1].(string))
+	err = d.Set("to", res[0][1].(string))
+	if err != nil {
+		return err
+	}
 	username, ok := res[0][2].(string)
 	if ok && username != "" {
-		rd.Set("username", username)
+		err = d.Set("username", username)
 	}
-	password, ok := res[0][3].(string)
-	if ok && password != "" {
-		rd.Set("password", password)
-	}
-	rd.SetId(res[0][0].(string))
-	return []*schema.ResourceData{rd}, err
+	return err
 }
 
 func updateConnection(d *schema.ResourceData, meta interface{}) error {
