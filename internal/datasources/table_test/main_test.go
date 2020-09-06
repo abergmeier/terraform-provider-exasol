@@ -1,6 +1,7 @@
 package table_test
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"testing"
@@ -19,7 +20,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-
+	flag.Parse()
 	os.Exit(testRun(m))
 }
 

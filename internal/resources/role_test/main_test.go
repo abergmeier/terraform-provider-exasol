@@ -1,6 +1,7 @@
 package role_test
 
 import (
+	"flag"
 	"os"
 	"testing"
 
@@ -13,6 +14,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	flag.Parse()
 	exaConf = internal.MustCreateTestConf()
 	os.Exit(m.Run())
 }

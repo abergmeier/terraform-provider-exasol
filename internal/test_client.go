@@ -2,6 +2,7 @@ package internal
 
 import (
 	"os"
+	"testing"
 
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
 	"github.com/grantstreetgroup/go-exasol-client"
@@ -15,13 +16,17 @@ func MustCreateTestConf() exasol.ConnConf {
 
 	exaUID := os.Getenv("EXAUID")
 	if exaUID == "" {
-		println("Set EXAUID to sys")
+		if testing.Verbose() {
+			println("Set EXAUID to sys")
+		}
 		exaUID = "sys"
 	}
 
 	exaPWD := os.Getenv("EXAPWD")
 	if exaPWD == "" {
-		println("Set EXAPWD to exasol")
+		if testing.Verbose() {
+			println("Set EXAPWD to exasol")
+		}
 		exaPWD = "exasol"
 	}
 

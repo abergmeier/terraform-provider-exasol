@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"flag"
 	"os"
 	"testing"
 
@@ -13,7 +14,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-
+	flag.Parse()
 	os.Exit(testRun(m))
 }
 

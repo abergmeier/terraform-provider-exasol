@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"testing"
@@ -19,6 +20,12 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	flag.Parse()
+	os.Exit(testRun(m))
+}
+
+func testRun(m *testing.M) int {
+
 	exaClient = internal.MustCreateTestClient()
 
 	func() {
@@ -35,5 +42,5 @@ func TestMain(m *testing.M) {
 		locked.Conn.Commit()
 	}()
 
-	os.Exit(m.Run())
+	return m.Run()
 }
