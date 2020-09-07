@@ -1,11 +1,11 @@
 package connection
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/abergmeier/terraform-exasol/internal"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-exasol/pkg/computed"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -41,24 +41,12 @@ func read(d *schema.ResourceData, meta interface{}) error {
 }
 
 func readData(d internal.Data, c *exasol.Conn) error {
-	name := d.Get("name").(string)
 
-	res, err := c.FetchSlice("SELECT CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
-		name,
-	}, "SYS")
+	err := computed.ReadConnection(d, c)
 	if err != nil {
 		return err
 	}
-
-	if len(res) == 0 {
-		return fmt.Errorf("Connection %s not found", name)
-	}
-
-	d.Set("to", res[0][0].(string))
-	username, _ := res[0][1].(string)
-	if username != "" {
-		d.Set("username", username)
-	}
+	name := d.Get("name").(string)
 	d.SetId(strings.ToUpper(name))
 	return nil
 }
