@@ -1,4 +1,4 @@
-package resources
+package connection
 
 import (
 	"errors"
@@ -8,11 +8,12 @@ import (
 	"github.com/abergmeier/terraform-exasol/internal"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-exasol/pkg/argument"
+	"github.com/abergmeier/terraform-exasol/pkg/computed"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func ConnectionResource() *schema.Resource {
+func Resource() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -44,7 +45,7 @@ func ConnectionResource() *schema.Resource {
 		Read:   readConnection,
 		Update: updateConnection,
 		Delete: deleteConnection,
-		Exists: existsConnection,
+		Exists: exists,
 		Importer: &schema.ResourceImporter{
 			State: importConnection,
 		},
@@ -59,35 +60,13 @@ func readConnection(d *schema.ResourceData, meta interface{}) error {
 	return readConnectionData(d, locked.Conn)
 }
 
-func readConnectionData(d internal.Data, c *exasol.Conn) error {
-	name, err := argument.Name(d)
-	if err != nil {
-		return err
-	}
+func readConnectionData(d internal.Data, c internal.Conn) error {
 
-	res, err := c.FetchSlice("SELECT CONNECTION_NAME, CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
-		name,
-	}, "SYS")
-
-	if err != nil {
-		return err
+	err := computed.ReadConnection(d, c)
+	if errors.Is(err, argument.ErrorEmptyName) {
+		return fmt.Errorf("Empty name not allowed for Connection (id: %s)", d.Id())
 	}
-
-	if len(res) == 0 {
-		return fmt.Errorf("Connection %s not found", name)
-	}
-
-	d.Set("to", res[0][1].(string))
-	username, ok := res[0][2].(string)
-	if ok && username != "" {
-		d.Set("username", username)
-	}
-	password, ok := res[0][3].(string)
-	if ok && password != "" {
-		d.Set("password", password)
-	}
-	d.SetId(res[0][0].(string))
-	return nil
+	return err
 }
 
 func createConnection(d *schema.ResourceData, meta interface{}) error {
@@ -169,7 +148,7 @@ func importConnection(d *schema.ResourceData, meta interface{}) ([]*schema.Resou
 	return []*schema.ResourceData{d}, nil
 }
 
-func importConnectionData(d internal.Data, c *exasol.Conn) error {
+func importConnectionData(d internal.Data, c internal.Conn) error {
 	name := d.Id()
 	if name == "" {
 		return errors.New("Import expects id to be set")
@@ -179,23 +158,7 @@ func importConnectionData(d internal.Data, c *exasol.Conn) error {
 		return err
 	}
 
-	res, err := c.FetchSlice("SELECT CONNECTION_NAME, CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
-		name,
-	}, "SYS")
-
-	if len(res) == 0 {
-		return fmt.Errorf("Connection %s not found", name)
-	}
-
-	err = d.Set("to", res[0][1].(string))
-	if err != nil {
-		return err
-	}
-	username, ok := res[0][2].(string)
-	if ok && username != "" {
-		err = d.Set("username", username)
-	}
-	return err
+	return readConnectionData(d, c)
 }
 
 func updateConnection(d *schema.ResourceData, meta interface{}) error {
@@ -238,40 +201,31 @@ func updateConnectionData(d internal.Data, c *exasol.Conn) error {
 	return err
 }
 
-func existsConnection(d *schema.ResourceData, meta interface{}) (bool, error) {
-	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	return existsConnectionData(d, locked.Conn)
-}
-
-func existsConnectionData(d internal.Data, c *exasol.Conn) (bool, error) {
-	name, err := argument.Name(d)
-	if err != nil {
-		return false, err
-	}
-
-	result, err := c.Execute("SELECT CONNECTION_NAME FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", [][]interface{}{
-		{
-			name,
-		},
+func Exists(c internal.Conn, name string) (bool, error) {
+	rows, err := c.FetchSlice("SELECT CONNECTION_NAME FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
+		name,
 	}, "SYS")
 	if err != nil {
 		return false, err
 	}
 
-	results := result["results"].([]interface{})[0].(map[string]interface{})["resultSet"].(map[string]interface{})
-	ri := results["numRows"]
-	if ri == nil {
-		return false, errors.New("numRows is nil")
+	return len(rows) > 0, nil
+}
+
+func exists(d *schema.ResourceData, meta interface{}) (bool, error) {
+	c := meta.(*exaprovider.Client)
+	locked := c.Lock()
+	defer locked.Unlock()
+	return existsData(d, locked.Conn)
+}
+
+func existsData(d internal.Data, c internal.Conn) (bool, error) {
+	name, err := argument.Name(d)
+	if err != nil {
+		return false, err
 	}
 
-	rows, ok := ri.(float64)
-	if !ok {
-		return false, errors.New("numRows not float64")
-	}
-
-	return rows > 0.0, nil
+	return Exists(c, name)
 }
 
 func resourceTo(d internal.Data) (string, error) {

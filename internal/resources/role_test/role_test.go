@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/abergmeier/terraform-exasol/internal/datasources/test"
 	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-exasol/internal/resources/role"
+	"github.com/abergmeier/terraform-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -59,7 +59,7 @@ func testExistsNotByName(actualName string) resource.TestCheckFunc {
 
 	return func(state *terraform.State) error {
 
-		c := test.TestAccProvider.Meta().(*exaprovider.Client)
+		c := test.AccProvider.Meta().(*exaprovider.Client)
 		locked := c.Lock()
 		defer locked.Unlock()
 
@@ -90,7 +90,7 @@ func testExist(id string) resource.TestCheckFunc {
 			return fmt.Errorf("Attribute name not found")
 		}
 
-		c := test.TestAccProvider.Meta().(*exaprovider.Client)
+		c := test.AccProvider.Meta().(*exaprovider.Client)
 		locked := c.Lock()
 		defer locked.Unlock()
 
