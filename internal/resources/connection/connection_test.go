@@ -1,4 +1,4 @@
-package resources
+package connection
 
 import (
 	"fmt"
@@ -78,7 +78,7 @@ func TestExistsConnection(t *testing.T) {
 	}
 
 	deleteConnectionData(exists, locked.Conn)
-	e, err := existsConnectionData(exists, locked.Conn)
+	e, err := existsData(exists, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -98,7 +98,7 @@ func TestExistsConnection(t *testing.T) {
 		t.Fatal("Unexpected error:", err)
 	}
 
-	e, err = existsConnectionData(exists, locked.Conn)
+	e, err = existsData(exists, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
