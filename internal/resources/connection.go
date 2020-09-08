@@ -277,7 +277,7 @@ func existsConnectionData(d internal.Data, c *exasol.Conn) (bool, error) {
 func resourceTo(d internal.Data) (string, error) {
 	to := d.Get("to").(string)
 	if to == "" {
-		return "", fmt.Errorf("Empty name for %s", d)
+		return "", fmt.Errorf("Empty attribute `to` for `%s`", d)
 	}
 	return to, nil
 }
