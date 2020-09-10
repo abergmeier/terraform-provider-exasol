@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	"github.com/abergmeier/terraform-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal"
 )
 
 func Commit(t *testing.T, c internal.Conn) {

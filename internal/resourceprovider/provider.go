@@ -1,15 +1,15 @@
 package resourceprovider
 
 import (
-	"github.com/abergmeier/terraform-exasol/internal"
-	"github.com/abergmeier/terraform-exasol/internal/datasources"
-	dconn "github.com/abergmeier/terraform-exasol/internal/datasources/connection"
-	dtable "github.com/abergmeier/terraform-exasol/internal/datasources/table"
-	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
-	"github.com/abergmeier/terraform-exasol/internal/resources"
-	rconn "github.com/abergmeier/terraform-exasol/internal/resources/connection"
-	rrole "github.com/abergmeier/terraform-exasol/internal/resources/role"
-	rtable "github.com/abergmeier/terraform-exasol/internal/resources/table"
+	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/datasources"
+	dconn "github.com/abergmeier/terraform-provider-exasol/internal/datasources/connection"
+	dtable "github.com/abergmeier/terraform-provider-exasol/internal/datasources/table"
+	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-provider-exasol/internal/resources"
+	rconn "github.com/abergmeier/terraform-provider-exasol/internal/resources/connection"
+	rrole "github.com/abergmeier/terraform-provider-exasol/internal/resources/role"
+	rtable "github.com/abergmeier/terraform-provider-exasol/internal/resources/table"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )

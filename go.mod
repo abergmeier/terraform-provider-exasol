@@ -1,4 +1,4 @@
-module github.com/abergmeier/terraform-exasol
+module github.com/abergmeier/terraform-provider-exasol
 
 go 1.14
 

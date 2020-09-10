@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/abergmeier/terraform-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal"
 )
 
 func TestCreatePhysicalSchema(t *testing.T) {

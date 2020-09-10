@@ -3,8 +3,8 @@ package computed
 import (
 	"fmt"
 
-	"github.com/abergmeier/terraform-exasol/internal"
-	"github.com/abergmeier/terraform-exasol/pkg/argument"
+	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 )
 
 // ReadConnection reads all attributes from Database.

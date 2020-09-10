@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/abergmeier/terraform-exasol/internal"
-	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
-	"github.com/abergmeier/terraform-exasol/internal/resourceprovider"
+	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-provider-exasol/internal/resourceprovider"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"

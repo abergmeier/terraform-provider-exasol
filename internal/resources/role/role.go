@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/abergmeier/terraform-exasol/internal"
-	"github.com/abergmeier/terraform-exasol/internal/exaprovider"
-	"github.com/abergmeier/terraform-exasol/pkg/argument"
-	"github.com/abergmeier/terraform-exasol/pkg/db"
+	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
+	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )

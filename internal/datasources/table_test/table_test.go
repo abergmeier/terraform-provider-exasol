@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/abergmeier/terraform-exasol/internal/test"
+	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"

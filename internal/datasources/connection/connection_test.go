@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/abergmeier/terraform-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal"
 )
 
 func TestReadConnection(t *testing.T) {

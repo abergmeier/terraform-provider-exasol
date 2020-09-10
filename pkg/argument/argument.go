@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/abergmeier/terraform-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal"
 )
 
 var (

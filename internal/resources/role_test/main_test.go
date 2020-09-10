@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/abergmeier/terraform-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/grantstreetgroup/go-exasol-client"
 )
 
