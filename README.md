@@ -44,6 +44,7 @@ terraform-provider-exasol
 | Role              | exasol_role             | [deployments/role.tf](deployments/role.tf)             |
 | Schema (physical) | exasol_physical_schema  | [deployments/schema.tf](deployments/schema.tf)         |
 | Table             | exasol_table            | [deployments/table.tf](deployments/table.tf)           |
+| User              | exasol_user             | [deployments/user.tf](deployments/user.tf)             |
 
 
 
@@ -52,7 +53,6 @@ terraform-provider-exasol
 | Function         | exasol_function            |
 | Schema (virtual) | exasol_virtual_schema      |
 | Script           | exasol_script              |
-| User             | exasol_user                |
 | View             | exasol_view                |
 
 

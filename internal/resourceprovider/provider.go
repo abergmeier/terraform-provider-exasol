@@ -10,6 +10,7 @@ import (
 	rconn "github.com/abergmeier/terraform-provider-exasol/internal/resources/connection"
 	rrole "github.com/abergmeier/terraform-provider-exasol/internal/resources/role"
 	rtable "github.com/abergmeier/terraform-provider-exasol/internal/resources/table"
+	ruser "github.com/abergmeier/terraform-provider-exasol/internal/resources/user"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -26,6 +27,7 @@ func Provider() *schema.Provider {
 			"exasol_physical_schema": resources.PhysicalSchema(),
 			"exasol_role":            rrole.Resource(),
 			"exasol_table":           rtable.Resource(),
+			"exasol_user":            ruser.Resource(),
 		},
 		Schema: map[string]*schema.Schema{
 			"username": {
