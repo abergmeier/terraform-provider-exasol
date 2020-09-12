@@ -162,7 +162,7 @@ func testExists(id string) resource.TestCheckFunc {
 
 	return func(state *terraform.State) error {
 
-		actualName, err := internal.RootName(state, id)
+		actualName, err := root.NameAttribute(state, id)
 
 		if err != nil {
 			return err
