@@ -3,9 +3,10 @@
 [![License](https://img.shields.io/github/license/abergmeier/terraform-provider-exasol)](https://github.com/abergmeier/terraform-provider-exasol/blob/master/LICENSE)
 
 
-# Terraform Plugin for EXASOL
+# Terraform Provider for EXASOL
 
-Prototype implementation of Plugin for EXASOL.
+Provider for EXASOL database objects.
+Enables #DBAOps with Exasol.
 
 Go [here](https://registry.terraform.io/providers/abergmeier/exasol/latest) for Terraform Registry.
 
