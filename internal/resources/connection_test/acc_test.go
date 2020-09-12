@@ -3,10 +3,12 @@ package connection_test
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/resources/connection"
+	"github.com/abergmeier/terraform-provider-exasol/internal/resources/root"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -27,7 +29,6 @@ func TestAccExasolConnection_rename(t *testing.T) {
 	defer locked.Unlock()
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:  nil,
 		Providers: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
@@ -40,6 +41,7 @@ func TestAccExasolConnection_rename(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_connection.test", "name", dbName),
 					testExists("exasol_connection.test"),
+					testId("exasol_connection.test", strings.ToUpper(dbName)),
 				),
 			},
 			{
@@ -53,6 +55,7 @@ func TestAccExasolConnection_rename(t *testing.T) {
 					resource.TestCheckResourceAttr("exasol_connection.test", "name", renamedDbName),
 					testExists("exasol_connection.test"),
 					testExistsNotByName(dbName),
+					testId("exasol_connection.test", strings.ToUpper(dbName)),
 				),
 			},
 		},
@@ -133,6 +136,22 @@ func checkImport(tableName string) resource.ImportStateCheckFunc {
 		username := s[0].Attributes["username"]
 		if username != "agent_007" {
 			return fmt.Errorf("Expected username agent_007: %s", username)
+		}
+
+		return nil
+	}
+}
+
+func testId(resourceName, id string) resource.TestCheckFunc {
+	return func(state *terraform.State) error {
+
+		r, err := root.ResourceByName(state, resourceName)
+		if err != nil {
+			return err
+		}
+
+		if r.Primary.ID != id {
+			return fmt.Errorf("Expected Id %s: %s", id, r.Primary.ID)
 		}
 
 		return nil

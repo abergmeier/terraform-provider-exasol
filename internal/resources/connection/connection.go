@@ -10,6 +10,7 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/computed"
+	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -23,7 +24,6 @@ func Resource() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: "Name of connection",
-				ForceNew:    true,
 			},
 			"to": {
 				Type:        schema.TypeString,
@@ -196,6 +196,15 @@ func updateConnection(ctx context.Context, d *schema.ResourceData, meta interfac
 }
 
 func updateConnectionData(d internal.Data, c *exasol.Conn) error {
+	if d.HasChange("name") {
+		old, new := d.GetChange("name")
+
+		err := db.RenameGlobal(c, "CONNECTION", old.(string), new.(string))
+		if err != nil {
+			return err
+		}
+	}
+
 	name, err := argument.Name(d)
 	if err != nil {
 		return err
@@ -268,9 +277,9 @@ func resourceUser(d internal.Data) string {
 }
 
 func resourceIdentifiedBy(d internal.Data) string {
-	id := d.Get("password")
-	if id == nil {
+	pwd := d.Get("password")
+	if pwd == nil {
 		return ""
 	}
-	return id.(string)
+	return pwd.(string)
 }
