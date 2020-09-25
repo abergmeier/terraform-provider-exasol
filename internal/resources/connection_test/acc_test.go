@@ -43,7 +43,6 @@ func TestAccExasolRole_rename(t *testing.T) {
 				),
 			},
 			{
-				ExpectNonEmptyPlan: true,
 				Config: fmt.Sprintf(`%s
 				resource "exasol_connection" "test" {
 					name = "%s"

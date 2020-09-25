@@ -39,7 +39,6 @@ func TestAccExasolRole_basic(t *testing.T) {
 				),
 			},
 			{
-				ExpectNonEmptyPlan: true,
 				Config: fmt.Sprintf(`%s
 				resource "exasol_role" "test_role" {
 					name = "%s"

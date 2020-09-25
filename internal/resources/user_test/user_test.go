@@ -39,7 +39,6 @@ func TestAccExasolUser_rename(t *testing.T) {
 				),
 			},
 			{
-				ExpectNonEmptyPlan: true,
 				Config: fmt.Sprintf(`%s
 				resource "exasol_user" "test" {
 					name     = "%s"
