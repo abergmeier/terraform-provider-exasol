@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/computed"
 	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -42,23 +44,28 @@ func Resource() *schema.Resource {
 				Sensitive:   true,
 			},
 		},
-		Create: createConnection,
-		Read:   readConnection,
-		Update: updateConnection,
-		Delete: deleteConnection,
-		Exists: exists,
+		CreateContext: createConnection,
+		ReadContext:   readConnection,
+		UpdateContext: updateConnection,
+		DeleteContext: deleteConnection,
+		Exists:        exists,
 		Importer: &schema.ResourceImporter{
-			State: importConnection,
+			StateContext: importConnection,
 		},
 	}
 
 }
 
-func readConnection(d *schema.ResourceData, meta interface{}) error {
+func readConnection(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
-	return readConnectionData(d, locked.Conn)
+	err := readConnectionData(d, locked.Conn)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	return nil
 }
 
 func readConnectionData(d internal.Data, c internal.Conn) error {
@@ -70,16 +77,21 @@ func readConnectionData(d internal.Data, c internal.Conn) error {
 	return err
 }
 
-func createConnection(d *schema.ResourceData, meta interface{}) error {
+func createConnection(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
 	err := createConnectionData(d, locked.Conn)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
-	return locked.Conn.Commit()
+	err = locked.Conn.Commit()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	return nil
 }
 
 func createConnectionData(d internal.Data, c *exasol.Conn) error {
@@ -111,15 +123,20 @@ func createConnectionData(d internal.Data, c *exasol.Conn) error {
 	return nil
 }
 
-func deleteConnection(d *schema.ResourceData, meta interface{}) error {
+func deleteConnection(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
 	err := deleteConnectionData(d, locked.Conn)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
-	return locked.Conn.Commit()
+	err = locked.Conn.Commit()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	return nil
 }
 
 func deleteConnectionData(d internal.Data, c *exasol.Conn) error {
@@ -138,7 +155,7 @@ func deleteConnectionData(d internal.Data, c *exasol.Conn) error {
 	return nil
 }
 
-func importConnection(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+func importConnection(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
@@ -162,15 +179,20 @@ func importConnectionData(d internal.Data, c internal.Conn) error {
 	return readConnectionData(d, c)
 }
 
-func updateConnection(d *schema.ResourceData, meta interface{}) error {
+func updateConnection(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
 	err := updateConnectionData(d, locked.Conn)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
-	return locked.Conn.Commit()
+	err = locked.Conn.Commit()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	return nil
 }
 
 func updateConnectionData(d internal.Data, c *exasol.Conn) error {
