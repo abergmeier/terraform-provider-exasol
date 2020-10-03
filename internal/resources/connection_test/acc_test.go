@@ -17,7 +17,7 @@ var (
 	nameSuffix = acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 )
 
-func TestAccExasolRole_rename(t *testing.T) {
+func TestAccExasolConnection_rename(t *testing.T) {
 
 	dbName := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
