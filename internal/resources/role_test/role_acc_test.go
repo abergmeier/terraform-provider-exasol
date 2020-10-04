@@ -2,6 +2,7 @@ package role_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
@@ -16,10 +17,9 @@ var (
 	roleSuffix = acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 )
 
-func TestAccExasolRole_basic(t *testing.T) {
+func TestAccExasolRole_rename(t *testing.T) {
 
-	resourceName := "test_role"
-	dbName := fmt.Sprintf("%s_%s", resourceName, roleSuffix)
+	dbName := fmt.Sprintf("%s_%s", t.Name(), roleSuffix)
 
 	renamedDbName := fmt.Sprintf("%s_RENAMED", dbName)
 
@@ -49,6 +49,58 @@ func TestAccExasolRole_basic(t *testing.T) {
 					testExist("exasol_role.test_role"),
 					testExistsNotByName(dbName),
 				),
+			},
+		},
+	})
+}
+
+func TestAccExasolRole_import(t *testing.T) {
+
+	dbName := fmt.Sprintf("%s_%s", t.Name(), roleSuffix)
+
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
+	tryCreateRole := func() {
+		stmt := fmt.Sprintf(`CREATE ROLE %s`, dbName)
+		_, err := locked.Conn.Execute(stmt)
+		if err != nil {
+			return
+		}
+		test.Commit(t, locked.Conn)
+	}
+
+	tryDeleteRole := func() {
+		stmt := fmt.Sprintf(`DROP ROLE %s`, dbName)
+		_, err := locked.Conn.Execute(stmt)
+		if err != nil {
+			return
+		}
+		locked.Conn.Commit()
+	}
+	defer tryDeleteRole()
+
+	resource.ParallelTest(t, resource.TestCase{
+		Providers: test.DefaultAccProviders,
+		Steps: []resource.TestStep{
+			{
+				PreConfig: tryDeleteRole,
+				Config: fmt.Sprintf(`%s
+				resource "exasol_role" "test" {
+					name = "%s"
+				}
+				`, test.HCLProviderFromConf(&exaConf), dbName),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("exasol_role.test", "name", dbName),
+					testExist("exasol_role.test"),
+				),
+			},
+			{
+				PreConfig:         tryCreateRole,
+				ResourceName:      "exasol_role.test",
+				ImportState:       true,
+				ImportStateId:     strings.ToUpper(dbName),
+				ImportStateVerify: true,
 			},
 		},
 	})

@@ -1,6 +1,7 @@
 package role
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -130,7 +131,16 @@ func imp(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, erro
 }
 
 func importData(d internal.Data, c *exasol.Conn) error {
-	return nil
+	name := d.Id()
+	if name == "" {
+		return errors.New("Import expects id to be set")
+	}
+	err := d.Set("name", name)
+	if err != nil {
+		return err
+	}
+
+	return readData(d, c)
 }
 
 func read(d *schema.ResourceData, meta interface{}) error {

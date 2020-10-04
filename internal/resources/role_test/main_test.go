@@ -6,15 +6,24 @@ import (
 	"testing"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/grantstreetgroup/go-exasol-client"
 )
 
 var (
-	exaConf exasol.ConnConf
+	exaClient *exaprovider.Client
+	exaConf   exasol.ConnConf
 )
 
 func TestMain(m *testing.M) {
 	flag.Parse()
+	os.Exit(testRun(m))
+}
+
+func testRun(m *testing.M) int {
 	exaConf = internal.MustCreateTestConf()
-	os.Exit(m.Run())
+	exaClient = exaprovider.NewClient(exaConf)
+	defer exaClient.Close()
+
+	return m.Run()
 }

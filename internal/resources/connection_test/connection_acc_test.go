@@ -1,7 +1,6 @@
 package connection_test
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -58,7 +57,6 @@ func TestAccExasolConnection_rename(t *testing.T) {
 	})
 }
 
-/* Can be reenable once https://github.com/hashicorp/terraform-plugin-sdk/issues/566 is fixed
 func TestAccExasolConnection_import(t *testing.T) {
 
 	dbName := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
@@ -77,9 +75,13 @@ IDENTIFIED BY 'secret'`, dbName)
 
 	tryDeleteConnection := func() {
 		stmt := fmt.Sprintf(`DROP CONNECTION %s`, dbName)
-		locked.Conn.Execute(stmt)
+		_, err := locked.Conn.Execute(stmt)
+		if err != nil {
+			return
+		}
 		locked.Conn.Commit()
 	}
+	defer tryDeleteConnection()
 
 	resource.ParallelTest(t, resource.TestCase{
 		Providers: test.DefaultAccProviders,
@@ -88,10 +90,11 @@ IDENTIFIED BY 'secret'`, dbName)
 				PreConfig: tryDeleteConnection,
 				Config: fmt.Sprintf(`%s
 resource "exasol_connection" "test" {
-	name = "%s"
-	to = "foo"
+  name     = "%s"
+  to       = "ftp://192.168.1.1/"
+  username = "agent_007"
 }
-				`, test.HCLProviderFromConf(&exaConf), dbName),
+				`, test.HCLProviderFromConf(&exaConf), strings.ToUpper(dbName)),
 			},
 			{
 				PreConfig:         createConnection,
@@ -99,43 +102,9 @@ resource "exasol_connection" "test" {
 				ImportState:       true,
 				ImportStateId:     strings.ToUpper(dbName),
 				ImportStateVerify: true,
-				ImportStateCheck:  checkImport(dbName),
-			},
-			{
-				Destroy: true,
 			},
 		},
 	})
-}
-*/
-
-func checkImport(tableName string) resource.ImportStateCheckFunc {
-	return func(s []*terraform.InstanceState) error {
-		if len(s) == 0 {
-			return errors.New("No Instance found")
-		}
-
-		if len(s) != 1 {
-			return fmt.Errorf("Expected one Instance: %d", len(s))
-		}
-
-		name := s[0].Attributes["name"]
-		if name != tableName {
-			return fmt.Errorf("Expected name %s: %s", tableName, name)
-		}
-
-		to := s[0].Attributes["to"]
-		if to != "ftp://192.168.1.1/" {
-			return fmt.Errorf("Expected to ftp://192.168.1.1/: %s", to)
-		}
-
-		username := s[0].Attributes["username"]
-		if username != "agent_007" {
-			return fmt.Errorf("Expected username agent_007: %s", username)
-		}
-
-		return nil
-	}
 }
 
 func testId(resourceName, id string) resource.TestCheckFunc {
