@@ -11,7 +11,7 @@ import (
 func TestCreate(t *testing.T) {
 	t.Parallel()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	createErr := &internal.TestData{
 		Values: map[string]interface{}{
@@ -45,7 +45,7 @@ func TestCreate(t *testing.T) {
 func TestDelete(t *testing.T) {
 	t.Parallel()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	locked := exaClient.Lock()
 	defer locked.Unlock()
@@ -74,7 +74,7 @@ func TestDelete(t *testing.T) {
 func TestExists(t *testing.T) {
 	t.Parallel()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	locked := exaClient.Lock()
 	defer locked.Unlock()
@@ -109,7 +109,7 @@ func TestExists(t *testing.T) {
 func TestImport(t *testing.T) {
 	t.Parallel()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	locked := exaClient.Lock()
 	defer locked.Unlock()
@@ -133,7 +133,7 @@ func TestImport(t *testing.T) {
 func TestRename(t *testing.T) {
 	t.Parallel()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	locked := exaClient.Lock()
 	defer locked.Unlock()

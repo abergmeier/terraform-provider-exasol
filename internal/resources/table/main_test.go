@@ -9,6 +9,7 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 )
 
 const (
@@ -16,7 +17,8 @@ const (
 )
 
 var (
-	exaClient *exaprovider.Client
+	exaClient  *exaprovider.Client
+	nameSuffix = acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum)
 )
 
 func TestMain(m *testing.M) {

@@ -12,7 +12,7 @@ func TestCreateConnection(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	create := &internal.TestData{
 		Values: map[string]interface{}{
@@ -37,7 +37,7 @@ func TestDeleteConnection(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 	d := &internal.TestData{
 		Values: map[string]interface{}{
 			"name": name,
@@ -69,7 +69,7 @@ func TestExistsConnection(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	exists := &internal.TestData{
 		Values: map[string]interface{}{
@@ -111,7 +111,7 @@ func TestReadConnection(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	read := &internal.TestData{
 		Values: map[string]interface{}{
@@ -153,7 +153,7 @@ func TestImportConnection(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	deleteData := &internal.TestData{
 		Values: map[string]interface{}{
@@ -202,7 +202,7 @@ func TestUpdateConnection(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	create := &internal.TestData{
 		Values: map[string]interface{}{

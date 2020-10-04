@@ -11,7 +11,7 @@ import (
 func TestReadConnection(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	stmt := fmt.Sprintf("CREATE CONNECTION %s TO 'foo'", name)
 	_, err := locked.Conn.Execute(stmt)

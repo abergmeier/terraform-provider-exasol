@@ -11,7 +11,7 @@ import (
 func TestReadPhysicalSchema(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	stmt := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", name)
 	_, err := locked.Conn.Execute(stmt)

@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -11,7 +12,7 @@ func TestCreatePhysicalSchema(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	create := &internal.TestData{
 		Values: map[string]interface{}{
@@ -31,7 +32,7 @@ func TestDeletePhysicalSchema(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	delete := &internal.TestData{
 		Values: map[string]interface{}{
@@ -55,7 +56,7 @@ func TestExistsPhysicalSchema(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	exists := &internal.TestData{
 		Values: map[string]interface{}{
@@ -90,7 +91,7 @@ func TestImportPhysicalSchema(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	imp := &internal.TestData{
 		Values: map[string]interface{}{
@@ -122,7 +123,7 @@ func TestReadPhysicalSchema(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	create := &internal.TestData{
 		Values: map[string]interface{}{
@@ -152,7 +153,7 @@ func TestRenamePhysicalSchema(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	name := t.Name()
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	create := &internal.TestData{
 		Values: map[string]interface{}{
