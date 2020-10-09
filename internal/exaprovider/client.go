@@ -9,21 +9,16 @@ import (
 // Client implements everything that is needed to act as a Provider
 // including the actual client to Exasol Websocket
 type Client struct {
-	conns chan *exasol.Conn
+	conf exasol.ConnConf
 }
 
 type Locked struct {
-	Conn  *exasol.Conn
-	conns *chan *exasol.Conn
+	Conn *exasol.Conn
 }
 
 func NewClient(conf exasol.ConnConf) *Client {
 	c := &Client{
-		conns: make(chan *exasol.Conn, 10), // For now we hardcode 10 parallel connections to Exasol
-	}
-
-	for i := 0; i != cap(c.conns); i++ {
-		c.conns <- newConnect(conf)
+		conf: conf,
 	}
 
 	return c
@@ -37,27 +32,21 @@ func newConnect(conf exasol.ConnConf) *exasol.Conn {
 
 func (c *Client) Lock() *Locked {
 	return &Locked{
-		Conn:  <-c.conns,
-		conns: &c.conns,
+		Conn: newConnect(c.conf),
 	}
 }
 
 func (l *Locked) Unlock() {
 	// Ensure that only explicitly committed operations stay
-	err := l.Conn.Rollback()
+	conn := l.Conn
+	l.Conn = nil
+	err := conn.Rollback()
 	if err != nil {
 		fmt.Println("Rollback failed:", err)
-
 	}
-	*l.conns <- l.Conn
-	l.Conn = nil
+	conn.Disconnect()
 }
 
 func (c *Client) Close() error {
-	for i := 0; i != cap(c.conns); i++ {
-		conn := <-c.conns
-		conn.Disconnect()
-	}
-
 	return nil
 }
