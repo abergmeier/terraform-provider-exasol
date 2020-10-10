@@ -168,8 +168,6 @@ func updateData(d internal.Data, c *exasol.Conn) error {
 		if err != nil {
 			return err
 		}
-
-		//d.Set("name", new)
 	}
 
 	return readData(d, c)
