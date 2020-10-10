@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+// PhysicalSchema returns the schema.Resource for managing a non-virtual Schema
 func PhysicalSchema() *schema.Resource {
 	return &schema.Resource{
 		Schema: map[string]*schema.Schema{
