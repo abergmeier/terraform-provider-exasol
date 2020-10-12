@@ -137,11 +137,7 @@ func read(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
-	err := readData(d, locked.Conn)
-	if err != nil {
-		return err
-	}
-	return nil
+	return readData(d, locked.Conn)
 }
 
 func readData(d internal.Data, c *exasol.Conn) error {
