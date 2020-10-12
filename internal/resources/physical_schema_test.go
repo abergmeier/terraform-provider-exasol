@@ -9,6 +9,8 @@ import (
 )
 
 func TestCreatePhysicalSchema(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
@@ -29,6 +31,8 @@ func TestCreatePhysicalSchema(t *testing.T) {
 }
 
 func TestDeletePhysicalSchema(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
@@ -53,6 +57,8 @@ func TestDeletePhysicalSchema(t *testing.T) {
 }
 
 func TestExistsPhysicalSchema(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
@@ -88,6 +94,8 @@ func TestExistsPhysicalSchema(t *testing.T) {
 }
 
 func TestImportPhysicalSchema(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
@@ -120,6 +128,8 @@ func TestImportPhysicalSchema(t *testing.T) {
 }
 
 func TestReadPhysicalSchema(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
@@ -150,6 +160,8 @@ func TestReadPhysicalSchema(t *testing.T) {
 }
 
 func TestRenamePhysicalSchema(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 

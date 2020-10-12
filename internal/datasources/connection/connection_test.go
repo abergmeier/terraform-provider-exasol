@@ -9,6 +9,8 @@ import (
 )
 
 func TestReadConnection(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)

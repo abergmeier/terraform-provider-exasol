@@ -9,6 +9,8 @@ import (
 )
 
 func TestCreateConnection(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
@@ -34,6 +36,8 @@ func TestCreateConnection(t *testing.T) {
 }
 
 func TestDeleteConnection(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
@@ -66,6 +70,8 @@ func TestDeleteConnection(t *testing.T) {
 }
 
 func TestExistsConnection(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
@@ -108,6 +114,8 @@ func TestExistsConnection(t *testing.T) {
 }
 
 func TestReadConnection(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
@@ -150,6 +158,8 @@ func TestReadConnection(t *testing.T) {
 }
 
 func TestImportConnection(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
@@ -199,6 +209,8 @@ func TestImportConnection(t *testing.T) {
 }
 
 func TestUpdateConnection(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 

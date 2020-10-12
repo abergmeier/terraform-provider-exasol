@@ -13,7 +13,7 @@ func TestAccExasolSchema_basic(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:  nil,
 		Providers: test.DefaultAccProviders,
 		Steps: []resource.TestStep{

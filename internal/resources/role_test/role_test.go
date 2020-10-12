@@ -23,7 +23,7 @@ func TestAccExasolRole_basic(t *testing.T) {
 
 	renamedDbName := fmt.Sprintf("%s_RENAMED", dbName)
 
-	resource.Test(t, resource.TestCase{
+	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:  nil,
 		Providers: test.DefaultAccProviders,
 		Steps: []resource.TestStep{

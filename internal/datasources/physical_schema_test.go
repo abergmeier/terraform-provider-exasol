@@ -9,6 +9,8 @@ import (
 )
 
 func TestReadPhysicalSchema(t *testing.T) {
+	t.Parallel()
+
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
