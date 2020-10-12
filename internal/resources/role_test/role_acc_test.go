@@ -58,20 +58,9 @@ func TestAccExasolRole_import(t *testing.T) {
 
 	dbName := fmt.Sprintf("%s_%s", t.Name(), roleSuffix)
 
-	tryCreateRole := func() {
-		locked := exaClient.Lock()
-		defer locked.Unlock()
-		stmt := fmt.Sprintf(`CREATE ROLE %s`, dbName)
-		_, err := locked.Conn.Execute(stmt)
-		if err != nil {
-			return
-		}
-		test.Commit(t, locked.Conn)
-	}
-
+	locked := exaClient.Lock()
+	defer locked.Unlock()
 	tryDeleteRole := func() {
-		locked := exaClient.Lock()
-		defer locked.Unlock()
 		stmt := fmt.Sprintf(`DROP ROLE %s`, dbName)
 		_, err := locked.Conn.Execute(stmt)
 		if err != nil {
@@ -92,12 +81,11 @@ func TestAccExasolRole_import(t *testing.T) {
 				}
 				`, test.HCLProviderFromConf(exaConf), strings.ToUpper(dbName)),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("exasol_role.test", "name", dbName),
+					resource.TestCheckResourceAttr("exasol_role.test", "name", strings.ToUpper(dbName)),
 					testExist("exasol_role.test"),
 				),
 			},
 			{
-				PreConfig:         tryCreateRole,
 				ResourceName:      "exasol_role.test",
 				ImportState:       true,
 				ImportStateId:     strings.ToUpper(dbName),

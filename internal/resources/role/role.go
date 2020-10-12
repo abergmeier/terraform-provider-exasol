@@ -135,6 +135,7 @@ func importData(d internal.Data, c *exasol.Conn) error {
 	if name == "" {
 		return errors.New("Import expects id to be set")
 	}
+	name = strings.ToUpper(name)
 	err := d.Set("name", name)
 	if err != nil {
 		return err
@@ -151,7 +152,14 @@ func read(d *schema.ResourceData, meta interface{}) error {
 }
 
 func readData(d internal.Data, c *exasol.Conn) error {
-	return nil
+	name, err := argument.Name(d)
+	if err != nil {
+		return err
+	}
+	_, err = c.FetchSlice("SELECT ROLE_NAME FROM EXA_ALL_ROLES WHERE ROLE_NAME = ?", []interface{}{
+		name,
+	}, "SYS")
+	return err
 }
 
 func update(d *schema.ResourceData, meta interface{}) error {
