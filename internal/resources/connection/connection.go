@@ -8,6 +8,7 @@ import (
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-provider-exasol/internal/globallock"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/computed"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
@@ -79,14 +80,16 @@ func readConnectionData(d internal.Data, c internal.Conn) error {
 
 func createConnection(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	err := createConnectionData(d, locked.Conn)
-	if err != nil {
-		return diag.FromErr(err)
-	}
+	err := globallock.RunAndRetryRollbacks(func() error {
+		locked := c.Lock()
+		defer locked.Unlock()
+		err := createConnectionData(d, locked.Conn)
+		if err != nil {
+			return err
+		}
 
-	err = locked.Conn.Commit()
+		return locked.Conn.Commit()
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -125,13 +128,15 @@ func createConnectionData(d internal.Data, c *exasol.Conn) error {
 
 func deleteConnection(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	err := deleteConnectionData(d, locked.Conn)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	err = locked.Conn.Commit()
+	err := globallock.RunAndRetryRollbacks(func() error {
+		locked := c.Lock()
+		defer locked.Unlock()
+		err := deleteConnectionData(d, locked.Conn)
+		if err != nil {
+			return err
+		}
+		return locked.Conn.Commit()
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -181,13 +186,15 @@ func importConnectionData(d internal.Data, c internal.Conn) error {
 
 func updateConnection(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	err := updateConnectionData(d, locked.Conn)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	err = locked.Conn.Commit()
+	err := globallock.RunAndRetryRollbacks(func() error {
+		locked := c.Lock()
+		defer locked.Unlock()
+		err := updateConnectionData(d, locked.Conn)
+		if err != nil {
+			return err
+		}
+		return locked.Conn.Commit()
+	})
 	if err != nil {
 		return diag.FromErr(err)
 	}

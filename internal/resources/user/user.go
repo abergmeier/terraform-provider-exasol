@@ -1,15 +1,18 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-provider-exasol/internal/globallock"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
 	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -42,26 +45,32 @@ func Resource() *schema.Resource {
 				ExactlyOneOf: []string{"ldap", "kerberos", "password"},
 			},
 		},
-		Create: create,
-		Update: update,
-		Delete: delete,
-		Exists: exists,
+		CreateContext: create,
+		UpdateContext: update,
+		DeleteContext: delete,
+		Exists:        exists,
 		Importer: &schema.ResourceImporter{
-			State: imp,
+			StateContext: imp,
 		},
-		Read: read,
+		ReadContext: read,
 	}
 }
 
-func create(d *schema.ResourceData, meta interface{}) error {
+func create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	err := createData(d, locked.Conn)
+	err := globallock.RunAndRetryRollbacks(func() error {
+		locked := c.Lock()
+		defer locked.Unlock()
+		err := createData(d, locked.Conn)
+		if err != nil {
+			return err
+		}
+		return locked.Conn.Commit()
+	})
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
-	return locked.Conn.Commit()
+	return nil
 }
 
 func createData(d internal.Data, c *exasol.Conn) error {
@@ -95,15 +104,21 @@ func createData(d internal.Data, c *exasol.Conn) error {
 	return err
 }
 
-func delete(d *schema.ResourceData, meta interface{}) error {
-	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	err := deleteData(d, locked.Conn)
+func delete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	err := globallock.RunAndRetryRollbacks(func() error {
+		c := meta.(*exaprovider.Client)
+		locked := c.Lock()
+		defer locked.Unlock()
+		err := deleteData(d, locked.Conn)
+		if err != nil {
+			return err
+		}
+		return locked.Conn.Commit()
+	})
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
-	return locked.Conn.Commit()
+	return nil
 }
 
 func deleteData(d internal.Data, c *exasol.Conn) error {
@@ -150,15 +165,11 @@ func Exists(c internal.Conn, name string) (bool, error) {
 	return len(res) != 0, nil
 }
 
-func imp(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+func imp(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
 	err := importData(d, locked.Conn)
-	if err != nil {
-		return nil, err
-	}
-	err = locked.Conn.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -182,13 +193,13 @@ func importData(d internal.Data, c internal.Conn) error {
 	return err
 }
 
-func read(d *schema.ResourceData, meta interface{}) error {
+func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
 	err := readData(d, locked.Conn)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	return nil
 }
@@ -245,15 +256,21 @@ func readData(d internal.Data, c internal.Conn) error {
 	return nil
 }
 
-func update(d *schema.ResourceData, meta interface{}) error {
+func update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	err := updateData(d, locked.Conn)
+	err := globallock.RunAndRetryRollbacks(func() error {
+		locked := c.Lock()
+		defer locked.Unlock()
+		err := updateData(d, locked.Conn)
+		if err != nil {
+			return err
+		}
+		return locked.Conn.Commit()
+	})
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
-	return locked.Conn.Commit()
+	return nil
 }
 
 func updateData(d internal.Data, c *exasol.Conn) error {
