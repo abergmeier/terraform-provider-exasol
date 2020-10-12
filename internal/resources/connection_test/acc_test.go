@@ -22,11 +22,7 @@ var (
 func TestAccExasolConnection_rename(t *testing.T) {
 
 	dbName := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
-
 	renamedDbName := fmt.Sprintf("%s_RENAMED", dbName)
-
-	locked := exaClient.Lock()
-	defer locked.Unlock()
 
 	resource.ParallelTest(t, resource.TestCase{
 		Providers: test.DefaultAccProviders,
@@ -37,7 +33,7 @@ func TestAccExasolConnection_rename(t *testing.T) {
 					name = "%s"
 					to = "foo"
 				}
-				`, test.HCLProviderFromConf(&locked.Conn.Conf), dbName),
+				`, test.HCLProviderFromConf(&exaConf), dbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_connection.test", "name", dbName),
 					testExists("exasol_connection.test"),
@@ -50,7 +46,7 @@ func TestAccExasolConnection_rename(t *testing.T) {
 					name = "%s"
 					to = "foo"
 				}
-				`, test.HCLProviderFromConf(&locked.Conn.Conf), renamedDbName),
+				`, test.HCLProviderFromConf(&exaConf), renamedDbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_connection.test", "name", renamedDbName),
 					testExists("exasol_connection.test"),

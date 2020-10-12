@@ -6,266 +6,361 @@ import (
 	"testing"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/globallock"
 )
 
 func TestCreateConnection(t *testing.T) {
 	t.Parallel()
-
-	locked := exaClient.Lock()
-	defer locked.Unlock()
-
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	create := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": name,
-			"to":   "me",
-		},
-	}
-	deleteConnectionData(create, locked.Conn)
+	err := globallock.RunAndRetryRollbacks(func() error {
+		locked := exaClient.Lock()
+		defer locked.Unlock()
 
-	err := createConnectionData(create, locked.Conn)
+		create := &internal.TestData{
+			Values: map[string]interface{}{
+				"name": name,
+				"to":   "me",
+			},
+		}
+		err := deleteConnectionData(create, locked.Conn)
+		if globallock.IsRollbackError(err) {
+			return err
+		}
+
+		err = createConnectionData(create, locked.Conn)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal("Unexpected error:", err)
+		}
+
+		if create.Id() != strings.ToUpper(name) {
+			t.Fatal("Unexpected id:", create.Id())
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatal("Unexpected error:", err)
+		t.Fatal(err)
 	}
-
-	if create.Id() != strings.ToUpper(name) {
-		t.Fatal("Unexpected id:", create.Id())
-	}
-
 }
 
 func TestDeleteConnection(t *testing.T) {
 	t.Parallel()
-
-	locked := exaClient.Lock()
-	defer locked.Unlock()
-
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
-	d := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": name,
-		},
-	}
-	err := deleteConnectionData(d, locked.Conn)
-	if err == nil {
-		t.Fatal("Expected error")
-	}
 
-	create := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": name,
-			"to":   "me",
-		},
-	}
-	err = createConnectionData(create, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
+	err := globallock.RunAndRetryRollbacks(func() error {
+		locked := exaClient.Lock()
+		defer locked.Unlock()
 
-	err = deleteConnectionData(d, locked.Conn)
+		d := &internal.TestData{
+			Values: map[string]interface{}{
+				"name": name,
+			},
+		}
+		err := deleteConnectionData(d, locked.Conn)
+		if err == nil {
+			t.Fatal("Expected error")
+		} else if globallock.IsRollbackError(err) {
+			return err
+		}
+
+		create := &internal.TestData{
+			Values: map[string]interface{}{
+				"name": name,
+				"to":   "me",
+			},
+		}
+		err = createConnectionData(create, locked.Conn)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal("Unexpected error:", err)
+		}
+
+		err = deleteConnectionData(d, locked.Conn)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal("Unexpected error:", err)
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatal("Unexpected error:", err)
+		t.Fatal(err)
 	}
 }
 
 func TestExistsConnection(t *testing.T) {
 	t.Parallel()
-
-	locked := exaClient.Lock()
-	defer locked.Unlock()
-
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	exists := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": name,
-		},
-	}
+	err := globallock.RunAndRetryRollbacks(func() error {
+		locked := exaClient.Lock()
+		defer locked.Unlock()
 
-	deleteConnectionData(exists, locked.Conn)
-	e, err := existsData(exists, locked.Conn)
+		exists := &internal.TestData{
+			Values: map[string]interface{}{
+				"name": name,
+			},
+		}
+
+		err := deleteConnectionData(exists, locked.Conn)
+		if globallock.IsRollbackError(err) {
+			return err
+		}
+		e, err := existsData(exists, locked.Conn)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal("Unexpected error:", err)
+		}
+		if e {
+			t.Fatal("Expected exist to be false")
+		}
+
+		create := &internal.TestData{
+			Values: map[string]interface{}{
+				"name": name,
+				"to":   "endpoint",
+			},
+		}
+
+		err = createConnectionData(create, locked.Conn)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal("Unexpected error:", err)
+		}
+
+		e, err = existsData(exists, locked.Conn)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal("Unexpected error:", err)
+		}
+		if !e {
+			t.Fatal("Expected exist to be true")
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-	if e {
-		t.Fatal("Expected exist to be false")
-	}
-
-	create := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": name,
-			"to":   "endpoint",
-		},
-	}
-
-	err = createConnectionData(create, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	e, err = existsData(exists, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-	if !e {
-		t.Fatal("Expected exist to be true")
+		t.Fatal(err)
 	}
 }
 
 func TestReadConnection(t *testing.T) {
 	t.Parallel()
-
-	locked := exaClient.Lock()
-	defer locked.Unlock()
-
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	read := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": name,
-		},
-	}
+	err := globallock.RunAndRetryRollbacks(func() error {
+		locked := exaClient.Lock()
+		defer locked.Unlock()
 
-	deleteConnectionData(read, locked.Conn)
-	err := readConnectionData(read, locked.Conn)
-	if err == nil {
-		t.Fatal("Expected error by readConnectionData")
-	}
+		read := &internal.TestData{
+			Values: map[string]interface{}{
+				"name": name,
+			},
+		}
 
-	create := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": name,
-			"to":   "bar",
-		},
-	}
+		err := deleteConnectionData(read, locked.Conn)
+		if globallock.IsRollbackError(err) {
+			return err
+		}
+		err = readConnectionData(read, locked.Conn)
+		if err == nil {
+			t.Fatal("Expected error by readConnectionData")
+		} else if globallock.IsRollbackError(err) {
+			return err
+		}
 
-	err = createConnectionData(create, locked.Conn)
+		create := &internal.TestData{
+			Values: map[string]interface{}{
+				"name": name,
+				"to":   "bar",
+			},
+		}
+
+		err = createConnectionData(create, locked.Conn)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal("Unexpected error:", err)
+		}
+
+		err = readConnectionData(read, locked.Conn)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal("Unexpected error:", err)
+		}
+
+		readTo := read.Get("to")
+		readToString, _ := readTo.(string)
+		if readToString != "bar" {
+			t.Fatalf("Unexpected to value: %#v", readTo)
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	err = readConnectionData(read, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	readTo := read.Get("to")
-	readToString, _ := readTo.(string)
-	if readToString != "bar" {
-		t.Fatalf("Unexpected to value: %#v", readTo)
+		t.Fatal(err)
 	}
 }
 
 func TestImportConnection(t *testing.T) {
 	t.Parallel()
-
-	locked := exaClient.Lock()
-	defer locked.Unlock()
-
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	deleteData := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": name,
-		},
-	}
-	deleteConnectionData(deleteData, locked.Conn)
+	err := globallock.RunAndRetryRollbacks(func() error {
+		locked := exaClient.Lock()
+		defer locked.Unlock()
 
-	imp := &internal.TestData{}
-	imp.SetId(name)
-	err := importConnectionData(imp, locked.Conn)
-	if err == nil {
-		t.Fatal("Expected error from importConnectionData")
-	}
+		deleteData := &internal.TestData{
+			Values: map[string]interface{}{
+				"name": name,
+			},
+		}
+		err := deleteConnectionData(deleteData, locked.Conn)
+		if globallock.IsRollbackError(err) {
+			return err
+		}
 
-	stmt := fmt.Sprintf("CREATE OR REPLACE CONNECTION %s TO 'http://foo' USER 'foo' IDENTIFIED BY 'bar'", name)
-	_, err = locked.Conn.Execute(stmt)
+		imp := &internal.TestData{}
+		imp.SetId(name)
+		err = importConnectionData(imp, locked.Conn)
+		if err == nil {
+			t.Fatal("Expected error from importConnectionData")
+		} else if globallock.IsRollbackError(err) {
+			return err
+		}
+
+		stmt := fmt.Sprintf("CREATE OR REPLACE CONNECTION %s TO 'http://foo' USER 'foo' IDENTIFIED BY 'bar'", name)
+		_, err = locked.Conn.Execute(stmt)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal(err)
+		}
+
+		err = importConnectionData(imp, locked.Conn)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal("Unexpected error:", err)
+		}
+
+		to := imp.Get("to")
+		toString, _ := to.(string)
+		if toString != "http://foo" {
+			t.Errorf("Expected to http://foo: %#v", to)
+		}
+
+		username := imp.Get("username")
+		usernameString, _ := username.(string)
+		if usernameString != "foo" {
+			t.Errorf("Expected username foo: %#v", username)
+		}
+
+		password := imp.Get("password")
+		if password != nil {
+			t.Errorf("Did not expect password: %#v", password)
+		}
+
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	err = importConnectionData(imp, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	to := imp.Get("to")
-	toString, _ := to.(string)
-	if toString != "http://foo" {
-		t.Errorf("Expected to http://foo: %#v", to)
-	}
-
-	username := imp.Get("username")
-	usernameString, _ := username.(string)
-	if usernameString != "foo" {
-		t.Errorf("Expected username foo: %#v", username)
-	}
-
-	password := imp.Get("password")
-	if password != nil {
-		t.Errorf("Did not expect password: %#v", password)
 	}
 }
 
 func TestUpdateConnection(t *testing.T) {
 	t.Parallel()
-
-	locked := exaClient.Lock()
-	defer locked.Unlock()
-
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	create := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": name,
-			"to":   "foo",
-		},
-	}
+	err := globallock.RunAndRetryRollbacks(func() error {
+		locked := exaClient.Lock()
+		defer locked.Unlock()
 
-	deleteConnectionData(create, locked.Conn)
+		create := &internal.TestData{
+			Values: map[string]interface{}{
+				"name": name,
+				"to":   "foo",
+			},
+		}
 
-	err := updateConnectionData(create, locked.Conn)
-	if err == nil {
-		t.Fatal("Expected error from updateConnectionData")
-	}
+		err := deleteConnectionData(create, locked.Conn)
+		if globallock.IsRollbackError(err) {
+			return err
+		}
 
-	err = createConnectionData(create, locked.Conn)
+		err = updateConnectionData(create, locked.Conn)
+		if err == nil {
+			t.Fatal("Expected error from updateConnectionData")
+		} else if globallock.IsRollbackError(err) {
+			return err
+		}
+
+		err = createConnectionData(create, locked.Conn)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal("Unexpected error:", err)
+		}
+
+		update := &internal.TestData{
+			Values: map[string]interface{}{
+				"name":     name,
+				"to":       "bar",
+				"username": "myuser",
+			},
+		}
+
+		err = updateConnectionData(update, locked.Conn)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal("Unexpexted error:", err)
+		}
+
+		read := &internal.TestData{
+			Values: map[string]interface{}{
+				"name": name,
+			},
+		}
+
+		err = readConnectionData(read, locked.Conn)
+		if err != nil {
+			if globallock.IsRollbackError(err) {
+				return err
+			}
+			t.Fatal("Unexpected error:", err)
+		}
+		to := read.Get("to")
+		toString, _ := to.(string)
+		if toString != "bar" {
+			t.Fatalf("Unexpected to value %#v", to)
+		}
+		username := read.Get("username")
+		usernameString, _ := username.(string)
+		if usernameString != "myuser" {
+			t.Fatalf("Unexpected to value %#v", username)
+		}
+
+		return nil
+	})
 	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	update := &internal.TestData{
-		Values: map[string]interface{}{
-			"name":     name,
-			"to":       "bar",
-			"username": "myuser",
-		},
-	}
-
-	err = updateConnectionData(update, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpexted error:", err)
-	}
-
-	read := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": name,
-		},
-	}
-
-	err = readConnectionData(read, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-	to := read.Get("to")
-	toString, _ := to.(string)
-	if toString != "bar" {
-		t.Fatalf("Unexpected to value %#v", to)
-	}
-	username := read.Get("username")
-	usernameString, _ := username.(string)
-	if usernameString != "myuser" {
-		t.Fatalf("Unexpected to value %#v", username)
+		t.Fatal(err)
 	}
 }
