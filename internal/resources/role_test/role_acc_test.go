@@ -58,10 +58,9 @@ func TestAccExasolRole_import(t *testing.T) {
 
 	dbName := fmt.Sprintf("%s_%s", t.Name(), roleSuffix)
 
-	locked := exaClient.Lock()
-	defer locked.Unlock()
-
 	tryCreateRole := func() {
+		locked := exaClient.Lock()
+		defer locked.Unlock()
 		stmt := fmt.Sprintf(`CREATE ROLE %s`, dbName)
 		_, err := locked.Conn.Execute(stmt)
 		if err != nil {
@@ -71,6 +70,8 @@ func TestAccExasolRole_import(t *testing.T) {
 	}
 
 	tryDeleteRole := func() {
+		locked := exaClient.Lock()
+		defer locked.Unlock()
 		stmt := fmt.Sprintf(`DROP ROLE %s`, dbName)
 		_, err := locked.Conn.Execute(stmt)
 		if err != nil {
