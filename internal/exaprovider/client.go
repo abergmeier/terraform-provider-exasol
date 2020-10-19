@@ -46,7 +46,3 @@ func (l *Locked) Unlock() {
 	}
 	conn.Disconnect()
 }
-
-func (c *Client) Close() error {
-	return nil
-}

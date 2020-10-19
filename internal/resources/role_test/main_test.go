@@ -23,7 +23,6 @@ func TestMain(m *testing.M) {
 func testRun(m *testing.M) int {
 	exaConf = internal.MustCreateTestConf()
 	exaClient = exaprovider.NewClient(exaConf)
-	defer exaClient.Close()
 
 	return m.Run()
 }

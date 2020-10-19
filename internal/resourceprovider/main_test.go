@@ -20,7 +20,6 @@ func TestMain(m *testing.M) {
 
 func testRun(m *testing.M) int {
 	exaClient = internal.MustCreateTestClient()
-	defer exaClient.Close()
 
 	return m.Run()
 }
