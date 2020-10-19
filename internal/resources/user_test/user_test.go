@@ -32,7 +32,7 @@ func TestAccExasolUser_rename(t *testing.T) {
 					name     = "%s"
 					password = "foo"
 				}
-				`, test.HCLProviderFromConf(&exaConf), dbName),
+				`, test.HCLProviderFromConf(exaConf), dbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_user.test", "name", dbName),
 					testExist("exasol_user.test"),
@@ -44,7 +44,7 @@ func TestAccExasolUser_rename(t *testing.T) {
 					name     = "%s"
 					password = "bar"
 				}
-				`, test.HCLProviderFromConf(&exaConf), renamedDbName),
+				`, test.HCLProviderFromConf(exaConf), renamedDbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_user.test", "name", renamedDbName),
 					testExist("exasol_user.test"),

@@ -37,7 +37,7 @@ func init() {
 	}
 }
 
-func HCLProviderFromConf(conf *exasol.ConnConf) string {
+func HCLProviderFromConf(conf exasol.ConnConf) string {
 	return fmt.Sprintf(`provider "exasol" {
 		ip       = "%s"
 		username = "%s"

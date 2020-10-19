@@ -281,7 +281,7 @@ data "exasol_table" "%s" {
 	name = "%s"
 	schema = data.exasol_physical_schema.dummy.name
 }
-`, test.HCLProviderFromConf(&locked.Conn.Conf), schemaName, v.ObjectTest.ResourceName, v.ObjectTest.DbName)
+`, test.HCLProviderFromConf(locked.Conn.Conf), schemaName, v.ObjectTest.ResourceName, v.ObjectTest.DbName)
 	}
 
 	basicSetup(t, locked.Conn)

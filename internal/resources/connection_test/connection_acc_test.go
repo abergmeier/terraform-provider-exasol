@@ -32,7 +32,7 @@ func TestAccExasolConnection_rename(t *testing.T) {
 					name = "%s"
 					to = "foo"
 				}
-				`, test.HCLProviderFromConf(&exaConf), dbName),
+				`, test.HCLProviderFromConf(exaConf), dbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_connection.test", "name", dbName),
 					testExists("exasol_connection.test"),
@@ -45,7 +45,7 @@ func TestAccExasolConnection_rename(t *testing.T) {
 					name = "%s"
 					to = "foo"
 				}
-				`, test.HCLProviderFromConf(&exaConf), renamedDbName),
+				`, test.HCLProviderFromConf(exaConf), renamedDbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_connection.test", "name", renamedDbName),
 					testExists("exasol_connection.test"),
@@ -94,7 +94,7 @@ resource "exasol_connection" "test" {
   to       = "ftp://192.168.1.1/"
   username = "agent_007"
 }
-				`, test.HCLProviderFromConf(&exaConf), strings.ToUpper(dbName)),
+				`, test.HCLProviderFromConf(exaConf), strings.ToUpper(dbName)),
 			},
 			{
 				PreConfig:         createConnection,

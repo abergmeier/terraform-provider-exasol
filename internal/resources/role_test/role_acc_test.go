@@ -32,7 +32,7 @@ func TestAccExasolRole_rename(t *testing.T) {
 				resource "exasol_role" "test_role" {
 					name = "%s"
 				}
-				`, test.HCLProviderFromConf(&exaConf), dbName),
+				`, test.HCLProviderFromConf(exaConf), dbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_role.test_role", "name", dbName),
 					testExist("exasol_role.test_role"),
@@ -43,7 +43,7 @@ func TestAccExasolRole_rename(t *testing.T) {
 				resource "exasol_role" "test_role" {
 					name = "%s"
 				}
-				`, test.HCLProviderFromConf(&exaConf), renamedDbName),
+				`, test.HCLProviderFromConf(exaConf), renamedDbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_role.test_role", "name", renamedDbName),
 					testExist("exasol_role.test_role"),
@@ -90,7 +90,7 @@ func TestAccExasolRole_import(t *testing.T) {
 				resource "exasol_role" "test" {
 					name = "%s"
 				}
-				`, test.HCLProviderFromConf(&exaConf), dbName),
+				`, test.HCLProviderFromConf(exaConf), strings.ToUpper(dbName)),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_role.test", "name", dbName),
 					testExist("exasol_role.test"),
