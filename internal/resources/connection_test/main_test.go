@@ -15,13 +15,16 @@ var (
 	exaConf   exasol.ConnConf
 )
 
+func init() {
+	exaConf = internal.MustCreateTestConf()
+}
+
 func TestMain(m *testing.M) {
 	flag.Parse()
 	os.Exit(testRun(m))
 }
 
 func testRun(m *testing.M) int {
-	exaConf = internal.MustCreateTestConf()
 	exaClient = exaprovider.NewClient(exaConf)
 
 	return m.Run()
