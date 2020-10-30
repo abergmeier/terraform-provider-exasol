@@ -17,11 +17,16 @@ var (
 	AccProvider      *schema.Provider
 	CheckFailedError = errors.New("Check failed")
 	// DefaultAccProviders are all Providers AKA exasol
-	DefaultAccProviders map[string]*schema.Provider
+	DefaultAccProviders map[string]func() (*schema.Provider, error)
 )
 
 func init() {
 	AccProvider = resourceprovider.Provider()
+	DefaultAccProviders = map[string]func() (*schema.Provider, error){
+		"exasol": func() (*schema.Provider, error) {
+			return AccProvider, nil
+		},
+	}
 }
 
 type ObjectTest struct {
@@ -29,12 +34,6 @@ type ObjectTest struct {
 	DbName       string
 	Stmt         string
 	Config       string
-}
-
-func init() {
-	DefaultAccProviders = map[string]*schema.Provider{
-		"exasol": AccProvider,
-	}
 }
 
 func HCLProviderFromConf(conf exasol.ConnConf) string {

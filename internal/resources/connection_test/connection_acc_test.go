@@ -24,7 +24,7 @@ func TestAccExasolConnection_rename(t *testing.T) {
 	renamedDbName := fmt.Sprintf("%s_RENAMED", dbName)
 
 	resource.ParallelTest(t, resource.TestCase{
-		Providers: test.DefaultAccProviders,
+		ProviderFactories: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`%s
@@ -84,7 +84,7 @@ IDENTIFIED BY 'secret'`, dbName)
 	defer tryDeleteConnection()
 
 	resource.ParallelTest(t, resource.TestCase{
-		Providers: test.DefaultAccProviders,
+		ProviderFactories: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
 				PreConfig: tryDeleteConnection,

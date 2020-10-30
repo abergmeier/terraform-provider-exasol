@@ -23,8 +23,8 @@ func TestAccExasolUser_rename(t *testing.T) {
 	renamedDbName := fmt.Sprintf("%s_RENAMED", dbName)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:  nil,
-		Providers: test.DefaultAccProviders,
+		PreCheck:          nil,
+		ProviderFactories: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`%s

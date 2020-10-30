@@ -14,8 +14,8 @@ func TestAccExasolSchema_basic(t *testing.T) {
 	defer locked.Unlock()
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:  nil,
-		Providers: test.DefaultAccProviders,
+		PreCheck:          nil,
+		ProviderFactories: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`%s

@@ -24,8 +24,8 @@ func TestAccExasolRole_rename(t *testing.T) {
 	renamedDbName := fmt.Sprintf("%s_RENAMED", dbName)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:  nil,
-		Providers: test.DefaultAccProviders,
+		PreCheck:          nil,
+		ProviderFactories: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`%s
@@ -71,7 +71,7 @@ func TestAccExasolRole_import(t *testing.T) {
 	defer tryDeleteRole()
 
 	resource.ParallelTest(t, resource.TestCase{
-		Providers: test.DefaultAccProviders,
+		ProviderFactories: test.DefaultAccProviders,
 		Steps: []resource.TestStep{
 			{
 				PreConfig: tryDeleteRole,
