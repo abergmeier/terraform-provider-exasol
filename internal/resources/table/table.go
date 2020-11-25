@@ -153,32 +153,24 @@ func postCreate(d internal.Data, c *exasol.Conn, schema, name string) error {
 // createDataMutate contains the mutating part of creating a Table
 func createDataMutate(d internal.Data, c *exasol.Conn, schema, name string, comp, like, subquery interface{}) error {
 
+	var err error
 	if !reflect.ValueOf(comp).IsZero() {
 		stmt := fmt.Sprintf("CREATE TABLE %s (%s)", name, comp.(string))
 		setStmtHash("composite", stmt, d)
-		_, err := c.Execute(stmt, nil, schema)
-		if err != nil {
-			return err
-		}
+		_, err = c.Execute(stmt, nil, schema)
 	} else if !reflect.ValueOf(like).IsZero() {
 		stmt := fmt.Sprintf("CREATE TABLE %s LIKE %s", name, like.(string))
 		setStmtHash("like", stmt, d)
-		_, err := c.Execute(stmt, nil, schema)
-		if err != nil {
-			return err
-		}
+		_, err = c.Execute(stmt, nil, schema)
 	} else if !reflect.ValueOf(subquery).IsZero() {
 		stmt := fmt.Sprintf("CREATE TABLE %s AS %s", name, subquery.(string))
 		setStmtHash("subquery", stmt, d)
-		_, err := c.Execute(stmt, nil, schema)
-		if err != nil {
-			return err
-		}
+		_, err = c.Execute(stmt, nil, schema)
 	} else {
 		panic("Internal conditions wrong")
 	}
 
-	return c.Commit()
+	return err
 }
 
 func delete(d *schema.ResourceData, meta interface{}) error {
