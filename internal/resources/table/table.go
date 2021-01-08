@@ -1,6 +1,7 @@
 package table
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"reflect"
@@ -15,6 +16,7 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/resource"
 	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -37,28 +39,36 @@ func Resource() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Description:  "Composite declarations as in CREATE TABLE FOO (<composite>)",
-				ForceNew:     true,
 				ExactlyOneOf: []string{"composite", "like", "subquery"},
 			},
 			"subquery": {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Description:  "Subquery declaration as in CREATE TABLE FOO AS <subquery>",
-				ForceNew:     true,
 				ExactlyOneOf: []string{"composite", "like", "subquery"},
 			},
 			"like": {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Description:  "Like declaration as in CREATE TABLE FOO LIKE <like>",
-				ForceNew:     true,
 				ExactlyOneOf: []string{"composite", "like", "subquery"},
+			},
+			"replace": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Allows for replacing Table inplace",
 			},
 			"column_indices":      computed.ColumnIndicesSchema(),
 			"columns":             computed.ColumnsSchema(),
 			"primary_key_indices": computed.PrimaryKeysSchema(),
 			"foreign_key_indices": computed.ForeignKeysSchema(),
 		},
+		CustomizeDiff: customdiff.All(
+			customdiff.ForceNewIf("composite", isReplaceFalse),
+			customdiff.ForceNewIf("subquery", isReplaceFalse),
+			customdiff.ForceNewIf("like", isReplaceFalse),
+		),
 		Create: create,
 		Read:   read,
 		Update: update,
@@ -70,18 +80,22 @@ func Resource() *schema.Resource {
 	}
 }
 
+func isReplaceFalse(ctx context.Context, d *schema.ResourceDiff, meta interface{}) bool {
+	return !d.Get("replace").(bool)
+}
+
 func create(d *schema.ResourceData, meta interface{}) error {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
-	err := createData(d, locked.Conn)
+	err := createData(d, locked.Conn, false)
 	if err != nil {
 		return err
 	}
 	return locked.Conn.Commit()
 }
 
-func createData(d internal.Data, c *exasol.Conn) error {
+func createData(d internal.Data, c *exasol.Conn, replace bool) error {
 
 	name, err := argument.Name(d)
 	if err != nil {
@@ -105,7 +119,7 @@ func createData(d internal.Data, c *exasol.Conn) error {
 		return fmt.Errorf("Only one of composite, like or subquery may be used %#v", like)
 	}
 
-	err = createDataMutate(d, c, schema, name, comp, like, subquery)
+	err = createDataMutate(d, c, schema, name, comp, like, subquery, replace)
 	if err != nil {
 		return err
 	}
@@ -151,19 +165,24 @@ func postCreate(d internal.Data, c *exasol.Conn, schema, name string) error {
 }
 
 // createDataMutate contains the mutating part of creating a Table
-func createDataMutate(d internal.Data, c *exasol.Conn, schema, name string, comp, like, subquery interface{}) error {
+func createDataMutate(d internal.Data, c *exasol.Conn, schema, name string, comp, like, subquery interface{}, replace bool) error {
+
+	initWords := "CREATE TABLE"
+	if replace {
+		initWords = "CREATE OR REPLACE TABLE"
+	}
 
 	var err error
 	if !reflect.ValueOf(comp).IsZero() {
-		stmt := fmt.Sprintf("CREATE TABLE %s (%s)", name, comp.(string))
+		stmt := fmt.Sprintf("%s %s (%s)", initWords, name, comp.(string))
 		setStmtHash("composite", stmt, d)
 		_, err = c.Execute(stmt, nil, schema)
 	} else if !reflect.ValueOf(like).IsZero() {
-		stmt := fmt.Sprintf("CREATE TABLE %s LIKE %s", name, like.(string))
+		stmt := fmt.Sprintf("%s %s LIKE %s", initWords, name, like.(string))
 		setStmtHash("like", stmt, d)
 		_, err = c.Execute(stmt, nil, schema)
 	} else if !reflect.ValueOf(subquery).IsZero() {
-		stmt := fmt.Sprintf("CREATE TABLE %s AS %s", name, subquery.(string))
+		stmt := fmt.Sprintf("%s %s AS %s", initWords, name, subquery.(string))
 		setStmtHash("subquery", stmt, d)
 		_, err = c.Execute(stmt, nil, schema)
 	} else {
@@ -371,7 +390,13 @@ func updateData(d internal.Data, c *exasol.Conn) error {
 		d.Set("name", new)
 	}
 
-	_ = d.Get("name").(string)
+	if d.HasChange("composite") || d.HasChange("subquery") || d.HasChange("like") {
+		err = createData(d, c, true)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

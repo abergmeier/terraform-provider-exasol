@@ -24,7 +24,7 @@ func TestCreate(t *testing.T) {
 	defer locked.Unlock()
 	locked.Conn.Execute(fmt.Sprintf("DROP TABLE %s", name), nil, schemaName)
 
-	err := createData(createErr, locked.Conn)
+	err := createData(createErr, locked.Conn, false)
 	if err == nil {
 		t.Fatal("Expected error when createData")
 	}
@@ -36,7 +36,7 @@ func TestCreate(t *testing.T) {
 			"composite": "A VARCHAR(20)",
 		},
 	}
-	err = createData(create, locked.Conn)
+	err = createData(create, locked.Conn, false)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
