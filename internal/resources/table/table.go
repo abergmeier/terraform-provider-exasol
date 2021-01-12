@@ -275,6 +275,10 @@ func importData(d internal.Data, c *exasol.Conn) error {
 		return err
 	}
 
+	if len(strings.TrimSpace(m.Schema)) == 0 {
+		return errors.New("Missing schema in import")
+	}
+
 	stmt := `SELECT COLUMN_NAME, COLUMN_TYPE, COLUMN_IS_NULLABLE
 FROM EXA_ALL_COLUMNS
 WHERE UPPER(COLUMN_SCHEMA) = UPPER(?) AND UPPER(COLUMN_TABLE) = UPPER(?)
