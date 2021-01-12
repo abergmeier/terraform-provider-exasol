@@ -128,6 +128,19 @@ func TestImport(t *testing.T) {
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
+
+	imp = &internal.TestData{
+		Values: map[string]interface{}{
+			"name:":  name,
+			"schema": schemaName,
+		},
+	}
+	imp.SetId(name)
+
+	err = importData(imp, locked.Conn)
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
 }
 
 func TestRename(t *testing.T) {

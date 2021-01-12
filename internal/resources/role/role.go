@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/datasources/role"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
@@ -101,18 +102,7 @@ func existsData(d internal.Data, c internal.Conn) (bool, error) {
 		return false, err
 	}
 
-	return Exists(c, name)
-}
-
-func Exists(c internal.Conn, name string) (bool, error) {
-	res, err := c.FetchSlice("SELECT ROLE_NAME FROM EXA_ALL_ROLES WHERE UPPER(ROLE_NAME) = UPPER(?)", []interface{}{
-		name,
-	}, "SYS")
-	if err != nil {
-		return false, err
-	}
-
-	return len(res) != 0, nil
+	return role.Exists(c, name)
 }
 
 func imp(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {

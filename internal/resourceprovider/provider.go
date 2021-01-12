@@ -4,6 +4,7 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/datasources"
 	dconn "github.com/abergmeier/terraform-provider-exasol/internal/datasources/connection"
+	drole "github.com/abergmeier/terraform-provider-exasol/internal/datasources/role"
 	dtable "github.com/abergmeier/terraform-provider-exasol/internal/datasources/table"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/resources"
@@ -20,6 +21,7 @@ func Provider() *schema.Provider {
 		DataSourcesMap: map[string]*schema.Resource{
 			"exasol_connection":      dconn.Resource(),
 			"exasol_physical_schema": datasources.PhysicalSchema(),
+			"exasol_role":            drole.Resource(),
 			"exasol_table":           dtable.Resource(),
 		},
 		ResourcesMap: map[string]*schema.Resource{

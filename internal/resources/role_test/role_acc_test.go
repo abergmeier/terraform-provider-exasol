@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	drole "github.com/abergmeier/terraform-provider-exasol/internal/datasources/role"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
-	"github.com/abergmeier/terraform-provider-exasol/internal/resources/role"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -103,7 +103,7 @@ func testExistsNotByName(actualName string) resource.TestCheckFunc {
 		locked := c.Lock()
 		defer locked.Unlock()
 
-		exists, err := role.Exists(locked.Conn, actualName)
+		exists, err := drole.Exists(locked.Conn, actualName)
 		if err != nil {
 			return err
 		}
@@ -134,7 +134,7 @@ func testExist(id string) resource.TestCheckFunc {
 		locked := c.Lock()
 		defer locked.Unlock()
 
-		exists, err := role.Exists(locked.Conn, actualName)
+		exists, err := drole.Exists(locked.Conn, actualName)
 		if err != nil {
 			return err
 		}

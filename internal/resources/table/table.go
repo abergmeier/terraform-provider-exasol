@@ -270,7 +270,7 @@ func imp(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, erro
 func importData(d internal.Data, c *exasol.Conn) error {
 	id := d.Id()
 
-	schema, name, err := resource.SplitIDInSchema(id)
+	m, err := resource.GetMetaFromQNDefault(id, d.Get("schema").(string))
 	if err != nil {
 		return err
 	}
@@ -280,8 +280,8 @@ FROM EXA_ALL_COLUMNS
 WHERE UPPER(COLUMN_SCHEMA) = UPPER(?) AND UPPER(COLUMN_TABLE) = UPPER(?)
 ORDER BY COLUMN_ORDINAL_POSITION`
 	res, err := c.FetchSlice(stmt, []interface{}{
-		schema,
-		name,
+		m.Schema,
+		m.ObjectName,
 	})
 	if err != nil {
 		return err
@@ -299,11 +299,11 @@ ORDER BY COLUMN_ORDINAL_POSITION`
 		b.WriteString("\n")
 	}
 
-	err = d.Set("name", name)
+	err = d.Set("name", m.ObjectName)
 	if err != nil {
 		return err
 	}
-	err = d.Set("schema", schema)
+	err = d.Set("schema", m.Schema)
 	if err != nil {
 		return err
 	}
@@ -312,7 +312,7 @@ ORDER BY COLUMN_ORDINAL_POSITION`
 		return err
 	}
 
-	return postCreate(d, c, schema, name)
+	return postCreate(d, c, m.Schema, m.ObjectName)
 }
 
 func read(d *schema.ResourceData, meta interface{}) error {
