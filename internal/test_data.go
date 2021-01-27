@@ -14,6 +14,11 @@ func (d *TestData) Get(name string) interface{} {
 	return v
 }
 
+func (d *TestData) GetOk(name string) (interface{}, bool) {
+	v, ok := d.Values[name]
+	return v, ok
+}
+
 func (d *TestData) Set(name string, value interface{}) error {
 	if d.Values == nil {
 		d.Values = map[string]interface{}{}

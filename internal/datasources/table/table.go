@@ -23,6 +23,11 @@ func Resource() *schema.Resource {
 				Required:    true,
 				Description: "Name of Schema to create Table in",
 			},
+			"composite": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "composite which might be used to create table columns",
+			},
 			"column_indices":      computed.ColumnIndicesSchema(),
 			"columns":             computed.ColumnsSchema(),
 			"foreign_key_indices": computed.ForeignKeysSchema(),
@@ -61,6 +66,11 @@ func readData(d internal.Data, c *exasol.Conn) error {
 	}
 
 	err = d.Set("column_indices", tr.ColumnIndices)
+	if err != nil {
+		return err
+	}
+
+	err = d.Set("composite", tr.Composite)
 	if err != nil {
 		return err
 	}

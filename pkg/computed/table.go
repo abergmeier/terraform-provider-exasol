@@ -10,6 +10,7 @@ import (
 type TableReader struct {
 	Columns       []interface{}
 	ColumnIndices map[string]interface{}
+	Composite     string
 	PrimaryKeys   map[string]interface{}
 	ForeignKeys   map[string]interface{}
 }
@@ -83,6 +84,32 @@ func ReadTable(c *exasol.Conn, schema, table string) (*TableReader, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	stmt := `SELECT COLUMN_NAME, COLUMN_TYPE, COLUMN_IS_NULLABLE
+FROM EXA_ALL_COLUMNS
+WHERE UPPER(COLUMN_SCHEMA) = UPPER(?) AND UPPER(COLUMN_TABLE) = UPPER(?)
+ORDER BY COLUMN_ORDINAL_POSITION`
+	res, err := c.FetchSlice(stmt, []interface{}{
+		schema,
+		table,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	b := strings.Builder{}
+	for _, column := range res {
+		b.WriteString(column[0].(string))
+		b.WriteString(" ")
+		b.WriteString(column[1].(string))
+		nullable := column[2].(bool)
+		if nullable {
+			b.WriteString(" NULL,\n")
+		} else {
+			b.WriteString(" NOT NULL,\n")
+		}
+	}
+	tr.Composite = b.String()
 	return tr, nil
 }
 

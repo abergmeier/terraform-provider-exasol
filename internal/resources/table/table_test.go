@@ -6,6 +6,7 @@ import (
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/resource"
+	"github.com/andreyvit/diff"
 )
 
 func TestCreate(t *testing.T) {
@@ -114,7 +115,7 @@ func TestImport(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (B VARCHAR(5))", name), nil, schemaName)
+	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (B VARCHAR(5), C VARCHAR(6) NOT NULL)", name), nil, schemaName)
 
 	imp := &internal.TestData{
 		Values: map[string]interface{}{
@@ -131,8 +132,9 @@ func TestImport(t *testing.T) {
 
 	imp = &internal.TestData{
 		Values: map[string]interface{}{
-			"name:":  name,
-			"schema": schemaName,
+			"name:":     name,
+			"schema":    schemaName,
+			"composite": "B VARCHAR(5)",
 		},
 	}
 	imp.SetId(name)
@@ -140,6 +142,17 @@ func TestImport(t *testing.T) {
 	err = importData(imp, locked.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
+	}
+
+	composite := imp.Get("composite").(string)
+
+	expectedComposite := `B VARCHAR(5) UTF8 NULL,
+C VARCHAR(6) UTF8 NOT NULL,
+`
+	if composite != expectedComposite {
+		ld := diff.LineDiff(composite, expectedComposite)
+
+		t.Fatalf("Unexpected composite value:\n%s", ld)
 	}
 }
 

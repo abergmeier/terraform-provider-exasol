@@ -279,30 +279,6 @@ func importData(d internal.Data, c *exasol.Conn) error {
 		return errors.New("Missing schema in import")
 	}
 
-	stmt := `SELECT COLUMN_NAME, COLUMN_TYPE, COLUMN_IS_NULLABLE
-FROM EXA_ALL_COLUMNS
-WHERE UPPER(COLUMN_SCHEMA) = UPPER(?) AND UPPER(COLUMN_TABLE) = UPPER(?)
-ORDER BY COLUMN_ORDINAL_POSITION`
-	res, err := c.FetchSlice(stmt, []interface{}{
-		m.Schema,
-		m.ObjectName,
-	})
-	if err != nil {
-		return err
-	}
-
-	b := strings.Builder{}
-	for _, column := range res {
-		b.WriteString(column[0].(string))
-		b.WriteString(" ")
-		b.WriteString(column[1].(string))
-		nullable := column[2].(bool)
-		if !nullable {
-			b.WriteString(" NOT NULL")
-		}
-		b.WriteString("\n")
-	}
-
 	err = d.Set("name", m.ObjectName)
 	if err != nil {
 		return err
@@ -311,9 +287,30 @@ ORDER BY COLUMN_ORDINAL_POSITION`
 	if err != nil {
 		return err
 	}
-	err = d.Set("composite", b.String())
+
+	tr, err := computed.ReadTable(c, m.Schema, m.ObjectName)
 	if err != nil {
 		return err
+	}
+
+	handled := false
+	_, ok := d.GetOk("like")
+	if !handled && ok {
+		handled = true
+	}
+
+	_, ok = d.GetOk("subquery")
+	if !handled && ok {
+		handled = true
+	}
+
+	_, ok = d.GetOk("composite")
+	if !handled && ok {
+		// Update composite value
+		err = d.Set("composite", tr.Composite)
+		if err != nil {
+			return err
+		}
 	}
 
 	return postCreate(d, c, m.Schema, m.ObjectName)
@@ -349,6 +346,26 @@ func readData(d internal.Data, c *exasol.Conn) error {
 	err = d.Set("column_indices", tr.ColumnIndices)
 	if err != nil {
 		return err
+	}
+
+	handled := false
+	_, ok := d.GetOk("like")
+	if !handled && ok {
+		handled = true
+	}
+
+	_, ok = d.GetOk("subquery")
+	if !handled && ok {
+		handled = true
+	}
+
+	_, ok = d.GetOk("composite")
+	if !handled && ok {
+		// Update composite value
+		err = d.Set("composite", tr.Composite)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = d.Set("primary_key_indices", tr.PrimaryKeys)
