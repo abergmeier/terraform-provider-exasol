@@ -194,7 +194,7 @@ func TestImportConstraint(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (A VARCHAR(10), B VARCHAR(20), CONSTRAINT PK PRIMARY KEY (B))", name), nil, schemaName)
+	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (A VARCHAR(10), B VARCHAR(20), CONSTRAINT PK PRIMARY KEY (B), DISTRIBUTE BY A)", name), nil, schemaName)
 
 	imp := &internal.TestData{
 		Values: map[string]interface{}{
@@ -213,7 +213,9 @@ func TestImportConstraint(t *testing.T) {
 	composite := imp.Get("composite").(string)
 	expectedComposite := `A VARCHAR(10) UTF8 NULL,
 B VARCHAR(20) UTF8 NOT NULL,
-CONSTRAINT PRIMARY KEY (B),`
+CONSTRAINT PRIMARY KEY (B),
+DISTRIBUTE BY A,
+`
 	if composite != expectedComposite {
 		t.Fatalf("Unexpected composite:\n%s", diff.LineDiff(composite, expectedComposite))
 	}

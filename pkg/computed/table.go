@@ -8,12 +8,19 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+type tableColumns struct {
+	cols        []interface{}
+	indices     map[string]interface{}
+	distributes []string
+}
+
 type TableReader struct {
 	Columns       []interface{}
 	ColumnIndices map[string]interface{}
 	Composite     string
 	PrimaryKeys   map[string]interface{}
 	ForeignKeys   map[string]interface{}
+	distributes   []string
 }
 
 // ColumnIndicesSchema provides a fully computed Schema for Column Indices of a Table
@@ -73,10 +80,12 @@ func PrimaryKeysSchema() *schema.Schema {
 func ReadTable(c *exasol.Conn, schema, table string) (*TableReader, error) {
 	tr := &TableReader{}
 	var err error
-	tr.Columns, tr.ColumnIndices, err = readColumns(c, schema, table)
+	tcs, err := readColumns(c, schema, table)
 	if err != nil {
 		return nil, err
 	}
+	tr.Columns = tcs.cols
+	tr.ColumnIndices = tcs.indices
 	tr.PrimaryKeys, err = readPrimaryKeys(c, schema, table)
 	if err != nil {
 		return nil, err
@@ -111,7 +120,12 @@ ORDER BY COLUMN_ORDINAL_POSITION`
 		}
 	}
 	for columnName := range tr.PrimaryKeys {
-		fmt.Fprintf(b, "CONSTRAINT PRIMARY KEY (%s),", strings.ToUpper(columnName))
+		fmt.Fprintf(b, "CONSTRAINT PRIMARY KEY (%s),\n", strings.ToUpper(columnName))
+	}
+
+	if len(tcs.distributes) > 0 {
+		dl := strings.Join(tcs.distributes, ", ")
+		fmt.Fprintf(b, "DISTRIBUTE BY %s,\n", strings.ToUpper(dl))
 	}
 	tr.Composite = b.String()
 	return tr, nil
@@ -157,8 +171,8 @@ func readForeignKeys(c *exasol.Conn, schema, name string) (map[string]interface{
 	return fks, nil
 }
 
-func readColumns(c *exasol.Conn, schema, table string) ([]interface{}, map[string]interface{}, error) {
-	stmt := `SELECT COLUMN_ORDINAL_POSITION, COLUMN_NAME, COLUMN_TYPE
+func readColumns(c *exasol.Conn, schema, table string) (tableColumns, error) {
+	stmt := `SELECT COLUMN_ORDINAL_POSITION, COLUMN_NAME, COLUMN_TYPE, COLUMN_IS_DISTRIBUTION_KEY
 		FROM EXA_ALL_COLUMNS
 		WHERE UPPER(COLUMN_SCHEMA) = UPPER(?) AND UPPER(COLUMN_TABLE) = UPPER(?)
 		ORDER BY COLUMN_ORDINAL_POSITION`
@@ -168,11 +182,13 @@ func readColumns(c *exasol.Conn, schema, table string) ([]interface{}, map[strin
 		table,
 	}, "SYS")
 	if err != nil {
-		return nil, nil, err
+		return tableColumns{}, err
 	}
 
-	cols := make([]interface{}, len(res))
-	colIndices := make(map[string]interface{}, len(res))
+	tcs := tableColumns{
+		cols:    make([]interface{}, len(res)),
+		indices: make(map[string]interface{}, len(res)),
+	}
 
 	for i, values := range res {
 		cn := values[1].(string)
@@ -180,9 +196,13 @@ func readColumns(c *exasol.Conn, schema, table string) ([]interface{}, map[strin
 			"name": cn,
 			"type": values[2].(string),
 		}
-		cols[i] = col
-		colIndices[strings.ToLower(cn)] = int(values[0].(float64)+0.5) - 1
+		tcs.cols[i] = col
+		isDistributionColumn := values[3].(bool)
+		if isDistributionColumn {
+			tcs.distributes = append(tcs.distributes, cn)
+		}
+		tcs.indices[strings.ToLower(cn)] = int(values[0].(float64)+0.5) - 1
 	}
 
-	return cols, colIndices, nil
+	return tcs, nil
 }
