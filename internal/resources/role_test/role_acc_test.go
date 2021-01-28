@@ -10,6 +10,7 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
@@ -23,9 +24,10 @@ func TestAccExasolRole_rename(t *testing.T) {
 
 	renamedDbName := fmt.Sprintf("%s_RENAMED", dbName)
 
+	ps := test.NewDefaultAccProviders()
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:          nil,
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`%s
@@ -35,7 +37,7 @@ func TestAccExasolRole_rename(t *testing.T) {
 				`, test.HCLProviderFromConf(exaConf), dbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_role.test_role", "name", dbName),
-					testExist("exasol_role.test_role"),
+					testExist(ps.Exasol, "exasol_role.test_role"),
 				),
 			},
 			{
@@ -46,8 +48,8 @@ func TestAccExasolRole_rename(t *testing.T) {
 				`, test.HCLProviderFromConf(exaConf), renamedDbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_role.test_role", "name", renamedDbName),
-					testExist("exasol_role.test_role"),
-					testExistsNotByName(dbName),
+					testExist(ps.Exasol, "exasol_role.test_role"),
+					testExistsNotByName(ps.Exasol, dbName),
 				),
 			},
 		},
@@ -70,8 +72,10 @@ func TestAccExasolRole_import(t *testing.T) {
 	}
 	defer tryDeleteRole()
 
+	ps := test.NewDefaultAccProviders()
+
 	resource.ParallelTest(t, resource.TestCase{
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				PreConfig: tryDeleteRole,
@@ -82,7 +86,7 @@ func TestAccExasolRole_import(t *testing.T) {
 				`, test.HCLProviderFromConf(exaConf), strings.ToUpper(dbName)),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_role.test", "name", strings.ToUpper(dbName)),
-					testExist("exasol_role.test"),
+					testExist(ps.Exasol, "exasol_role.test"),
 				),
 			},
 			{
@@ -95,11 +99,11 @@ func TestAccExasolRole_import(t *testing.T) {
 	})
 }
 
-func testExistsNotByName(actualName string) resource.TestCheckFunc {
+func testExistsNotByName(p *schema.Provider, actualName string) resource.TestCheckFunc {
 
 	return func(state *terraform.State) error {
 
-		c := test.AccProvider.Meta().(*exaprovider.Client)
+		c := p.Meta().(*exaprovider.Client)
 		locked := c.Lock()
 		defer locked.Unlock()
 
@@ -116,7 +120,7 @@ func testExistsNotByName(actualName string) resource.TestCheckFunc {
 	}
 }
 
-func testExist(id string) resource.TestCheckFunc {
+func testExist(p *schema.Provider, id string) resource.TestCheckFunc {
 
 	return func(state *terraform.State) error {
 
@@ -130,7 +134,7 @@ func testExist(id string) resource.TestCheckFunc {
 			return fmt.Errorf("Attribute name not found")
 		}
 
-		c := test.AccProvider.Meta().(*exaprovider.Client)
+		c := p.Meta().(*exaprovider.Client)
 		locked := c.Lock()
 		defer locked.Unlock()
 

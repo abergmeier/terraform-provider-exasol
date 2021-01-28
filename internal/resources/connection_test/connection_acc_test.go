@@ -11,6 +11,7 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
@@ -23,8 +24,9 @@ func TestAccExasolConnection_rename(t *testing.T) {
 	dbName := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 	renamedDbName := fmt.Sprintf("%s_RENAMED", dbName)
 
+	ps := test.NewDefaultAccProviders()
 	resource.ParallelTest(t, resource.TestCase{
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`%s
@@ -35,7 +37,7 @@ func TestAccExasolConnection_rename(t *testing.T) {
 				`, test.HCLProviderFromConf(exaConf), dbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_connection.test", "name", dbName),
-					testExists("exasol_connection.test"),
+					testExists(ps.Exasol, "exasol_connection.test"),
 					testId("exasol_connection.test", strings.ToUpper(dbName)),
 				),
 			},
@@ -48,8 +50,8 @@ func TestAccExasolConnection_rename(t *testing.T) {
 				`, test.HCLProviderFromConf(exaConf), renamedDbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_connection.test", "name", renamedDbName),
-					testExists("exasol_connection.test"),
-					testExistsNotByName(dbName),
+					testExists(ps.Exasol, "exasol_connection.test"),
+					testExistsNotByName(ps.Exasol, dbName),
 					testId("exasol_connection.test", strings.ToUpper(dbName)),
 				),
 			},
@@ -84,7 +86,7 @@ IDENTIFIED BY 'secret'`, dbName)
 	defer tryDeleteConnection()
 
 	resource.ParallelTest(t, resource.TestCase{
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: test.NewDefaultAccProviders().Factories,
 		Steps: []resource.TestStep{
 			{
 				PreConfig: tryDeleteConnection,
@@ -123,7 +125,7 @@ func testId(resourceName, id string) resource.TestCheckFunc {
 	}
 }
 
-func testExists(id string) resource.TestCheckFunc {
+func testExists(p *schema.Provider, id string) resource.TestCheckFunc {
 
 	return func(state *terraform.State) error {
 
@@ -133,15 +135,15 @@ func testExists(id string) resource.TestCheckFunc {
 			return err
 		}
 
-		return test.True(func(c internal.Conn) (bool, error) {
+		return test.True(p, func(c internal.Conn) (bool, error) {
 			return connection.Exists(c, actualName)
 		})(state)
 	}
 }
 
-func testExistsNotByName(actualName string) resource.TestCheckFunc {
+func testExistsNotByName(p *schema.Provider, actualName string) resource.TestCheckFunc {
 
-	return test.False(func(c internal.Conn) (bool, error) {
+	return test.False(p, func(c internal.Conn) (bool, error) {
 		return connection.Exists(c, actualName)
 	})
 }

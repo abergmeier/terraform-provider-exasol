@@ -14,17 +14,22 @@ import (
 )
 
 var (
-	AccProvider      *schema.Provider
 	CheckFailedError = errors.New("Check failed")
-	// DefaultAccProviders are all Providers AKA exasol
-	DefaultAccProviders map[string]func() (*schema.Provider, error)
 )
 
-func init() {
-	AccProvider = resourceprovider.Provider()
-	DefaultAccProviders = map[string]func() (*schema.Provider, error){
-		"exasol": func() (*schema.Provider, error) {
-			return AccProvider, nil
+type DefaultAccProviders struct {
+	Exasol    *schema.Provider
+	Factories map[string]func() (*schema.Provider, error)
+}
+
+func NewDefaultAccProviders() DefaultAccProviders {
+	p := resourceprovider.Provider()
+	return DefaultAccProviders{
+		Exasol: p,
+		Factories: map[string]func() (*schema.Provider, error){
+			"exasol": func() (*schema.Provider, error) {
+				return p, nil
+			},
 		},
 	}
 }
@@ -44,11 +49,11 @@ func HCLProviderFromConf(conf exasol.ConnConf) string {
 	}`, conf.Host, conf.Username, conf.Password)
 }
 
-func False(cb func(internal.Conn) (bool, error)) resource.TestCheckFunc {
+func False(p *schema.Provider, cb func(internal.Conn) (bool, error)) resource.TestCheckFunc {
 
 	return func(state *terraform.State) error {
 
-		c := AccProvider.Meta().(*exaprovider.Client)
+		c := p.Meta().(*exaprovider.Client)
 		locked := c.Lock()
 		defer locked.Unlock()
 
@@ -65,11 +70,11 @@ func False(cb func(internal.Conn) (bool, error)) resource.TestCheckFunc {
 	}
 }
 
-func True(cb func(internal.Conn) (bool, error)) resource.TestCheckFunc {
+func True(p *schema.Provider, cb func(internal.Conn) (bool, error)) resource.TestCheckFunc {
 
 	return func(state *terraform.State) error {
 
-		c := AccProvider.Meta().(*exaprovider.Client)
+		c := p.Meta().(*exaprovider.Client)
 		locked := c.Lock()
 		defer locked.Unlock()
 

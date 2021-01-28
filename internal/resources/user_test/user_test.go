@@ -9,6 +9,7 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
@@ -22,9 +23,11 @@ func TestAccExasolUser_rename(t *testing.T) {
 
 	renamedDbName := fmt.Sprintf("%s_RENAMED", dbName)
 
+	ps := test.NewDefaultAccProviders()
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:          nil,
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`%s
@@ -35,7 +38,7 @@ func TestAccExasolUser_rename(t *testing.T) {
 				`, test.HCLProviderFromConf(exaConf), dbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_user.test", "name", dbName),
-					testExist("exasol_user.test"),
+					testExist(ps.Exasol, "exasol_user.test"),
 				),
 			},
 			{
@@ -47,19 +50,19 @@ func TestAccExasolUser_rename(t *testing.T) {
 				`, test.HCLProviderFromConf(exaConf), renamedDbName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("exasol_user.test", "name", renamedDbName),
-					testExist("exasol_user.test"),
-					testExistsNotByName(dbName),
+					testExist(ps.Exasol, "exasol_user.test"),
+					testExistsNotByName(ps.Exasol, dbName),
 				),
 			},
 		},
 	})
 }
 
-func testExistsNotByName(actualName string) resource.TestCheckFunc {
+func testExistsNotByName(p *schema.Provider, actualName string) resource.TestCheckFunc {
 
 	return func(state *terraform.State) error {
 
-		c := test.AccProvider.Meta().(*exaprovider.Client)
+		c := p.Meta().(*exaprovider.Client)
 		locked := c.Lock()
 		defer locked.Unlock()
 
@@ -76,7 +79,7 @@ func testExistsNotByName(actualName string) resource.TestCheckFunc {
 	}
 }
 
-func testExist(id string) resource.TestCheckFunc {
+func testExist(p *schema.Provider, id string) resource.TestCheckFunc {
 
 	return func(state *terraform.State) error {
 
@@ -90,7 +93,7 @@ func testExist(id string) resource.TestCheckFunc {
 			return fmt.Errorf("Attribute name not found")
 		}
 
-		c := test.AccProvider.Meta().(*exaprovider.Client)
+		c := p.Meta().(*exaprovider.Client)
 		locked := c.Lock()
 		defer locked.Unlock()
 

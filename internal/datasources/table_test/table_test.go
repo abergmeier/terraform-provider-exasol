@@ -286,9 +286,11 @@ data "exasol_table" "%s" {
 
 	basicSetup(t, locked.Conn)
 
+	ps := test.NewDefaultAccProviders()
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:          nil,
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				Config: testDefs[0].ObjectTest.Config,
@@ -303,7 +305,7 @@ data "exasol_table" "%s" {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:          nil,
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				Config: testDefs[1].ObjectTest.Config,
@@ -318,7 +320,7 @@ data "exasol_table" "%s" {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:          nil,
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				Config: testDefs[2].ObjectTest.Config,
@@ -333,7 +335,7 @@ data "exasol_table" "%s" {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:          nil,
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				Config: testDefs[3].ObjectTest.Config,
@@ -348,7 +350,7 @@ data "exasol_table" "%s" {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:          nil,
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				Config: testDefs[4].ObjectTest.Config,
@@ -363,7 +365,7 @@ data "exasol_table" "%s" {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:          nil,
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				Config: testDefs[5].ObjectTest.Config,
@@ -378,7 +380,7 @@ data "exasol_table" "%s" {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:          nil,
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				Config: testDefs[6].ObjectTest.Config,
@@ -393,7 +395,7 @@ data "exasol_table" "%s" {
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:          nil,
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				Config: testDefs[7].ObjectTest.Config,

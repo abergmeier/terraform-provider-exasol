@@ -13,9 +13,11 @@ func TestAccExasolSchema_basic(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
+	ps := test.NewDefaultAccProviders()
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:          nil,
-		ProviderFactories: test.DefaultAccProviders,
+		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
 			{
 				Config: fmt.Sprintf(`%s
