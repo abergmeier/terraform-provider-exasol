@@ -1,6 +1,8 @@
 package resourceprovider
 
 import (
+	"context"
+
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/datasources"
 	dconn "github.com/abergmeier/terraform-provider-exasol/internal/datasources/connection"
@@ -13,6 +15,7 @@ import (
 	rtable "github.com/abergmeier/terraform-provider-exasol/internal/resources/table"
 	ruser "github.com/abergmeier/terraform-provider-exasol/internal/resources/user"
 	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -55,7 +58,7 @@ func Provider() *schema.Provider {
 			},
 		},
 	}
-	provider.ConfigureFunc = func(d *schema.ResourceData) (interface{}, error) {
+	provider.ConfigureContextFunc = func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		// Shameless plug from https://github.com/terraform-providers/terraform-provider-aws/blob/d51784148586f605ab30ecea268e80fe83d415a9/aws/provider.go
 		terraformVersion := provider.TerraformVersion
 		if terraformVersion == "" {
@@ -63,7 +66,8 @@ func Provider() *schema.Provider {
 			// We can therefore assume that if it's missing it's 0.10 or 0.11
 			terraformVersion = "0.11+compatible"
 		}
-		return providerConfigure(d)
+		m, err := providerConfigure(d)
+		return m, diag.FromErr(err)
 	}
 	return provider
 }
