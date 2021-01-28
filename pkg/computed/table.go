@@ -1,6 +1,7 @@
 package computed
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/grantstreetgroup/go-exasol-client"
@@ -97,7 +98,7 @@ ORDER BY COLUMN_ORDINAL_POSITION`
 		return nil, err
 	}
 
-	b := strings.Builder{}
+	b := &strings.Builder{}
 	for _, column := range res {
 		b.WriteString(column[0].(string))
 		b.WriteString(" ")
@@ -108,6 +109,9 @@ ORDER BY COLUMN_ORDINAL_POSITION`
 		} else {
 			b.WriteString(" NOT NULL,\n")
 		}
+	}
+	for columnName := range tr.PrimaryKeys {
+		fmt.Fprintf(b, "CONSTRAINT PRIMARY KEY (%s),", strings.ToUpper(columnName))
 	}
 	tr.Composite = b.String()
 	return tr, nil

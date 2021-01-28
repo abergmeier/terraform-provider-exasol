@@ -185,3 +185,36 @@ func TestRename(t *testing.T) {
 		t.Fatal("Unknown error:", err)
 	}
 }
+
+func TestImportConstraint(t *testing.T) {
+	t.Parallel()
+
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
+
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
+	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (A VARCHAR(10), B VARCHAR(20), CONSTRAINT PK PRIMARY KEY (B))", name), nil, schemaName)
+
+	imp := &internal.TestData{
+		Values: map[string]interface{}{
+			"name:":     name,
+			"schema":    schemaName,
+			"composite": "A", // dummy value to trigger composite refresh
+		},
+	}
+	imp.SetId(resource.NewID(schemaName, name))
+
+	err := importData(imp, locked.Conn)
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
+
+	composite := imp.Get("composite").(string)
+	expectedComposite := `A VARCHAR(10) UTF8 NULL,
+B VARCHAR(20) UTF8 NOT NULL,
+CONSTRAINT PRIMARY KEY (B),`
+	if composite != expectedComposite {
+		t.Fatalf("Unexpected composite:\n%s", diff.LineDiff(composite, expectedComposite))
+	}
+}
