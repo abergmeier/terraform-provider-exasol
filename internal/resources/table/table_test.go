@@ -34,7 +34,7 @@ func TestCreate(t *testing.T) {
 		Values: map[string]interface{}{
 			"name":      name,
 			"schema":    schemaName,
-			"composite": "A VARCHAR(20)",
+			"composite": "A VARCHAR(20),",
 		},
 	}
 	err = createData(create, locked.Conn, false)

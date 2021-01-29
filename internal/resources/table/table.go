@@ -174,7 +174,8 @@ func createDataMutate(d internal.Data, c *exasol.Conn, schema, name string, comp
 
 	var err error
 	if !reflect.ValueOf(comp).IsZero() {
-		stmt := fmt.Sprintf("%s %s (%s)", initWords, name, comp.(string))
+		cleaned := strings.Trim(comp.(string), ",\n ")
+		stmt := fmt.Sprintf("%s %s (%s)", initWords, name, cleaned)
 		setStmtHash("composite", stmt, d)
 		_, err = c.Execute(stmt, nil, schema)
 	} else if !reflect.ValueOf(like).IsZero() {
