@@ -49,6 +49,10 @@ func ColumnsSchema() *schema.Schema {
 					Type:     schema.TypeString,
 					Computed: true,
 				},
+				"comment": {
+					Type:     schema.TypeString,
+					Computed: true,
+				},
 			},
 		},
 	}
@@ -108,15 +112,23 @@ ORDER BY COLUMN_ORDINAL_POSITION`
 	}
 
 	b := &strings.Builder{}
-	for _, column := range res {
-		b.WriteString(column[0].(string))
+	for i, column := range res {
+		colInfo := tr.Columns[i].(map[string]interface{})
+		b.WriteString(colInfo["name"].(string))
 		b.WriteString(" ")
-		b.WriteString(column[1].(string))
+		b.WriteString(colInfo["type"].(string))
 		nullable := column[2].(bool)
 		if nullable {
-			b.WriteString(" NULL,\n")
+			b.WriteString(" NULL")
 		} else {
-			b.WriteString(" NOT NULL,\n")
+			b.WriteString(" NOT NULL")
+		}
+
+		comment := colInfo["comment"]
+		if comment == "" {
+			b.WriteString(",\n")
+		} else {
+			fmt.Fprintf(b, " COMMENT IS '%s',\n", comment)
 		}
 	}
 	for columnName := range tr.PrimaryKeys {
@@ -172,10 +184,10 @@ func readForeignKeys(c *exasol.Conn, schema, name string) (map[string]interface{
 }
 
 func readColumns(c *exasol.Conn, schema, table string) (tableColumns, error) {
-	stmt := `SELECT COLUMN_ORDINAL_POSITION, COLUMN_NAME, COLUMN_TYPE, COLUMN_IS_DISTRIBUTION_KEY
-		FROM EXA_ALL_COLUMNS
-		WHERE UPPER(COLUMN_SCHEMA) = UPPER(?) AND UPPER(COLUMN_TABLE) = UPPER(?)
-		ORDER BY COLUMN_ORDINAL_POSITION`
+	stmt := `SELECT COLUMN_ORDINAL_POSITION, COLUMN_NAME, COLUMN_TYPE, COLUMN_IS_DISTRIBUTION_KEY, COLUMN_COMMENT
+FROM EXA_ALL_COLUMNS
+WHERE UPPER(COLUMN_SCHEMA) = UPPER(?) AND UPPER(COLUMN_TABLE) = UPPER(?)
+ORDER BY COLUMN_ORDINAL_POSITION`
 
 	res, err := c.FetchSlice(stmt, []interface{}{
 		schema,
@@ -196,6 +208,13 @@ func readColumns(c *exasol.Conn, schema, table string) (tableColumns, error) {
 			"name": cn,
 			"type": values[2].(string),
 		}
+
+		if values[4] == nil {
+			col["comment"] = ""
+		} else {
+			col["comment"] = values[4].(string)
+		}
+
 		tcs.cols[i] = col
 		isDistributionColumn := values[3].(bool)
 		if isDistributionColumn {

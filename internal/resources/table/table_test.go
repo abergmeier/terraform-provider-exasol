@@ -164,25 +164,45 @@ func TestRename(t *testing.T) {
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (A VARCHAR(10))", name), nil, schemaName)
+	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (A VARCHAR(10) COMMENT IS 'Foo')", name), nil, schemaName)
 
 	newName := name + "_SHINY"
 	rename := &internal.TestData{
 		Values: map[string]interface{}{
 			"name":      name,
 			"schema":    schemaName,
-			"composite": "A VARCHAR(10)",
+			"composite": "A VARCHAR(10) COMMENT IS 'Foo'",
 		},
 		NewValues: map[string]interface{}{
 			"name":      newName,
 			"schema":    schemaName,
-			"composite": "A VARCHAR(10)",
+			"composite": "A VARCHAR(10) COMMENT IS 'Foo'",
 		},
 	}
 
 	err := updateData(rename, locked.Conn)
 	if err != nil {
 		t.Fatal("Unknown error:", err)
+	}
+
+	read := &internal.TestData{
+		Values: map[string]interface{}{
+			"name":      newName,
+			"schema":    schemaName,
+			"composite": "Dummy",
+		},
+	}
+
+	err = readData(read, locked.Conn)
+	if err != nil {
+		t.Fatal("Unknwon error:", err)
+	}
+
+	composite := read.Get("composite").(string)
+	expectedComposite := `A VARCHAR(10) UTF8 NULL COMMENT IS 'Foo',
+`
+	if composite != expectedComposite {
+		t.Fatalf("Unexpected composite:\n%s", diff.LineDiff(expectedComposite, composite))
 	}
 }
 
