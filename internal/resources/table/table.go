@@ -53,6 +53,11 @@ func Resource() *schema.Resource {
 				Description:  "Like declaration as in CREATE TABLE FOO LIKE <like>",
 				ExactlyOneOf: []string{"composite", "like", "subquery"},
 			},
+			"comment": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Comment for the Table",
+			},
 			"replace": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -172,18 +177,24 @@ func createDataMutate(d internal.Data, c *exasol.Conn, schema, name string, comp
 		initWords = "CREATE OR REPLACE TABLE"
 	}
 
+	commentSuffix := ""
+	comment, ok := d.Get("comment").(string)
+	if comment != "" && ok {
+		commentSuffix = fmt.Sprintf(" COMMENT IS '%s'", comment)
+	}
+
 	var err error
 	if !reflect.ValueOf(comp).IsZero() {
 		cleaned := strings.Trim(comp.(string), ",\n ")
-		stmt := fmt.Sprintf("%s %s (%s)", initWords, name, cleaned)
+		stmt := fmt.Sprintf("%s %s (%s)%s", initWords, name, cleaned, commentSuffix)
 		setStmtHash("composite", stmt, d)
 		_, err = c.Execute(stmt, nil, schema)
 	} else if !reflect.ValueOf(like).IsZero() {
-		stmt := fmt.Sprintf("%s %s LIKE %s", initWords, name, like.(string))
+		stmt := fmt.Sprintf("%s %s LIKE %s%s", initWords, name, like.(string), commentSuffix)
 		setStmtHash("like", stmt, d)
 		_, err = c.Execute(stmt, nil, schema)
 	} else if !reflect.ValueOf(subquery).IsZero() {
-		stmt := fmt.Sprintf("%s %s AS %s", initWords, name, subquery.(string))
+		stmt := fmt.Sprintf("%s %s AS %s%s", initWords, name, subquery.(string), commentSuffix)
 		setStmtHash("subquery", stmt, d)
 		_, err = c.Execute(stmt, nil, schema)
 	} else {
@@ -414,6 +425,13 @@ func updateData(d internal.Data, c *exasol.Conn) error {
 
 	if d.HasChange("composite") || d.HasChange("subquery") || d.HasChange("like") {
 		err = createData(d, c, true)
+		if err != nil {
+			return err
+		}
+	}
+
+	if d.HasChange("comment") {
+		err := db.Comment(c, "TABLE", d.Get("name").(string), d.Get("comment").(string), schema)
 		if err != nil {
 			return err
 		}

@@ -107,6 +107,30 @@ func TestExists(t *testing.T) {
 	}
 }
 
+func TestComment(t *testing.T) {
+	t.Parallel()
+
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
+
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+
+	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (B VARCHAR(5), C VARCHAR(6) NOT NULL)", name), nil, schemaName)
+
+	upd := &internal.TestData{
+		Values: map[string]interface{}{
+			"name:":   name,
+			"schema":  schemaName,
+			"comment": "Foo",
+		},
+	}
+
+	err := updateData(upd, locked.Conn)
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
+}
+
 func TestImport(t *testing.T) {
 	t.Parallel()
 
