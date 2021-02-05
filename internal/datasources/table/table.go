@@ -28,6 +28,11 @@ func Resource() *schema.Resource {
 				Computed:    true,
 				Description: "composite which might be used to create table columns",
 			},
+			"comment": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "Comment of the Table",
+			},
 			"column_indices":      computed.ColumnIndicesSchema(),
 			"columns":             computed.ColumnsSchema(),
 			"foreign_key_indices": computed.ForeignKeysSchema(),
@@ -56,6 +61,11 @@ func readData(d internal.Data, c *exasol.Conn) error {
 	}
 
 	tr, err := computed.ReadTable(c, schema, name)
+	if err != nil {
+		return err
+	}
+
+	err = tr.SetComment(d)
 	if err != nil {
 		return err
 	}

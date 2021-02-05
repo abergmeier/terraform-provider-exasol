@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -17,10 +18,19 @@ type tableColumns struct {
 type TableReader struct {
 	Columns       []interface{}
 	ColumnIndices map[string]interface{}
+	Comment       string
 	Composite     string
 	PrimaryKeys   map[string]interface{}
 	ForeignKeys   map[string]interface{}
 	distributes   []string
+}
+
+func (tr *TableReader) SetComment(d internal.Data) error {
+	if tr.Comment == "" {
+		return d.Set("comment", nil)
+	} else {
+		return d.Set("comment", tr.Comment)
+	}
 }
 
 // ColumnIndicesSchema provides a fully computed Schema for Column Indices of a Table
@@ -90,6 +100,10 @@ func ReadTable(c *exasol.Conn, schema, table string) (*TableReader, error) {
 	}
 	tr.Columns = tcs.cols
 	tr.ColumnIndices = tcs.indices
+	tr.Comment, err = readComment(c, schema, table)
+	if err != nil {
+		return nil, err
+	}
 	tr.PrimaryKeys, err = readPrimaryKeys(c, schema, table)
 	if err != nil {
 		return nil, err
@@ -141,6 +155,23 @@ ORDER BY COLUMN_ORDINAL_POSITION`
 	}
 	tr.Composite = b.String()
 	return tr, nil
+}
+
+func readComment(c *exasol.Conn, schema, name string) (string, error) {
+	stmt := "SELECT TABLE_COMMENT FROM EXA_ALL_TABLES WHERE UPPER(TABLE_SCHEMA) = UPPER(?) AND UPPER(TABLE_NAME) = UPPER(?)"
+	res, err := c.FetchSlice(stmt, []interface{}{
+		schema,
+		name,
+	}, "SYS")
+	if err != nil {
+		return "", err
+	}
+
+	if len(res) == 0 || res[0][0] == nil {
+		return "", nil // No comment
+	}
+
+	return res[0][0].(string), nil
 }
 
 func readPrimaryKeys(c *exasol.Conn, schema, name string) (map[string]interface{}, error) {

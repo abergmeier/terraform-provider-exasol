@@ -305,6 +305,11 @@ func importData(d internal.Data, c *exasol.Conn) error {
 		return err
 	}
 
+	err = tr.SetComment(d)
+	if err != nil {
+		return err
+	}
+
 	handled := false
 	_, ok := d.GetOk("like")
 	if !handled && ok {
@@ -346,6 +351,11 @@ func readData(d internal.Data, c *exasol.Conn) error {
 	}
 
 	tr, err := computed.ReadTable(c, schema, name)
+	if err != nil {
+		return err
+	}
+
+	err = tr.SetComment(d)
 	if err != nil {
 		return err
 	}
