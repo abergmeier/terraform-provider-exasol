@@ -10,7 +10,7 @@ Enables #DBAOps with Exasol.
 
 Go [here](https://registry.terraform.io/providers/abergmeier/exasol/latest) for Terraform Registry.
 
-## Usage in Terraform 0.13
+## Usage in Terraform 0.13+
 
 To use the provider, you currently have to add it to your terraform definitions:
 
@@ -23,18 +23,6 @@ terraform {
     }
   }
 }
-```
-
-## Usage in Terraform 0.12
-
-In Terraform 0.12 it is easiest to copy the binary directly alongside your terraform definitions:
-
-Thus your directory should look something like this:
-
-```
-schema.tf
-table.tf
-terraform-provider-exasol
 ```
 
 ## Status
