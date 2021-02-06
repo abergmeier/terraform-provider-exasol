@@ -8,6 +8,7 @@ import (
 	dconn "github.com/abergmeier/terraform-provider-exasol/internal/datasources/connection"
 	drole "github.com/abergmeier/terraform-provider-exasol/internal/datasources/role"
 	dtable "github.com/abergmeier/terraform-provider-exasol/internal/datasources/table"
+	dview "github.com/abergmeier/terraform-provider-exasol/internal/datasources/view"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/resources"
 	rconn "github.com/abergmeier/terraform-provider-exasol/internal/resources/connection"
@@ -26,6 +27,7 @@ func Provider() *schema.Provider {
 			"exasol_physical_schema": datasources.PhysicalSchema(),
 			"exasol_role":            drole.Resource(),
 			"exasol_table":           dtable.Resource(),
+			"exasol_view":            dview.Resource(),
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"exasol_connection":      rconn.Resource(),

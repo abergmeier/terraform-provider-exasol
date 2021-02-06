@@ -26,11 +26,7 @@ type TableReader struct {
 }
 
 func (tr *TableReader) SetComment(d internal.Data) error {
-	if tr.Comment == "" {
-		return d.Set("comment", nil)
-	} else {
-		return d.Set("comment", tr.Comment)
-	}
+	return setComment(tr.Comment, d)
 }
 
 // ColumnIndicesSchema provides a fully computed Schema for Column Indices of a Table
@@ -94,7 +90,7 @@ func PrimaryKeysSchema() *schema.Schema {
 func ReadTable(c *exasol.Conn, schema, table string) (*TableReader, error) {
 	tr := &TableReader{}
 	var err error
-	tcs, err := readColumns(c, schema, table)
+	tcs, err := readTableColumns(c, schema, table)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +210,7 @@ func readForeignKeys(c *exasol.Conn, schema, name string) (map[string]interface{
 	return fks, nil
 }
 
-func readColumns(c *exasol.Conn, schema, table string) (tableColumns, error) {
+func readTableColumns(c *exasol.Conn, schema, table string) (tableColumns, error) {
 	stmt := `SELECT COLUMN_ORDINAL_POSITION, COLUMN_NAME, COLUMN_TYPE, COLUMN_IS_DISTRIBUTION_KEY, COLUMN_COMMENT
 FROM EXA_ALL_COLUMNS
 WHERE UPPER(COLUMN_SCHEMA) = UPPER(?) AND UPPER(COLUMN_TABLE) = UPPER(?)

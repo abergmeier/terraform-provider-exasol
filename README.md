@@ -46,6 +46,7 @@ terraform-provider-exasol
 | Schema (physical) | exasol_physical_schema  | [deployments/schema.tf](deployments/schema.tf)         |
 | Table             | exasol_table            | [deployments/table.tf](deployments/table.tf)           |
 | User              | exasol_user             | [deployments/user.tf](deployments/user.tf)             |
+| View (datasource) | exasol_view             |                                                        |
 
 
 
@@ -54,7 +55,7 @@ terraform-provider-exasol
 | Function         | exasol_function            |
 | Schema (virtual) | exasol_virtual_schema      |
 | Script           | exasol_script              |
-| View             | exasol_view                |
+| View (resource)  | exasol_view                |
 
 
 ## Testing
