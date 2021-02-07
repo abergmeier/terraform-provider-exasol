@@ -433,14 +433,13 @@ func updateData(d internal.Data, c *exasol.Conn) error {
 		d.Set("name", new)
 	}
 
-	if d.HasChange("composite") || d.HasChange("subquery") || d.HasChange("like") {
+	replaceNecessary := d.HasChange("composite") || d.HasChange("subquery") || d.HasChange("like")
+	if replaceNecessary {
 		err = createData(d, c, true)
 		if err != nil {
 			return err
 		}
-	}
-
-	if d.HasChange("comment") {
+	} else if d.HasChange("comment") {
 		err := db.Comment(c, "TABLE", d.Get("name").(string), d.Get("comment").(string), schema)
 		if err != nil {
 			return err
