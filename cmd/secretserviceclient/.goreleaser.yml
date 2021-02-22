@@ -6,8 +6,6 @@ builds:
     # they are unable to install libraries.
     - CGO_ENABLED=0
   goos:
-    - freebsd
-    - windows
     - linux
     - darwin
   goarch:
