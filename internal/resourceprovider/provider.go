@@ -2,22 +2,17 @@ package resourceprovider
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/datasources"
 	dconn "github.com/abergmeier/terraform-provider-exasol/internal/datasources/connection"
 	drole "github.com/abergmeier/terraform-provider-exasol/internal/datasources/role"
 	dtable "github.com/abergmeier/terraform-provider-exasol/internal/datasources/table"
 	dview "github.com/abergmeier/terraform-provider-exasol/internal/datasources/view"
-	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/resources"
 	rconn "github.com/abergmeier/terraform-provider-exasol/internal/resources/connection"
 	rrole "github.com/abergmeier/terraform-provider-exasol/internal/resources/role"
 	rtable "github.com/abergmeier/terraform-provider-exasol/internal/resources/table"
 	ruser "github.com/abergmeier/terraform-provider-exasol/internal/resources/user"
-	"github.com/abergmeier/terraform-provider-exasol/internal/secretservice"
-	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -74,30 +69,4 @@ func Provider() *schema.Provider {
 		return m, diag.FromErr(err)
 	}
 	return provider
-}
-
-func providerConfigure(d internal.Data) (interface{}, error) {
-
-	conf := exasol.ConnConf{
-		Host:     d.Get("ip").(string),
-		Port:     uint16(d.Get("port").(int)),
-		Username: d.Get("username").(string),
-	}
-
-	pd := d.Get("password")
-
-	if pd != nil {
-		conf.Password = pd.(string)
-	}
-
-	if conf.Password == "" {
-		passwords, err := secretservice.SearchPassword(fmt.Sprintf("%s:%d", conf.Host, conf.Port), conf.Username)
-		if err == nil {
-			conf.Password = passwords[0].Value
-		} else {
-			fmt.Printf("Ignoring SecretService lookup error: %s\n", err)
-		}
-	}
-
-	return exaprovider.NewClient(conf), nil
 }
