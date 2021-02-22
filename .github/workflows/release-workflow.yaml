@@ -22,12 +22,21 @@ jobs:
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           PASSPHRASE: ${{ secrets.PASSPHRASE }}
-      - name: Run GoReleaser
+      - name: Run GoReleaser for Terraform Provider
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
           args: release --rm-dist
           workdir: cmd/terraform-provider-exasol
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+      - name: Run GoReleaser for SecretService Client
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: release --rm-dist
+          workdir: cmd/secretserviceclient
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}

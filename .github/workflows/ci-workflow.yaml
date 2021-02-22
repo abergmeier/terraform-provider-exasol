@@ -13,6 +13,9 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.16
-      - name: Build tool
+      - name: Build Terraform Provider
         run: |
           set -x && pushd cmd/terraform-provider-exasol >/dev/null && go build
+      - name: Build SecretService Client
+        run: |
+          set -x && pushd cmd/secretserviceclient >/dev/null && go build
