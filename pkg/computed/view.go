@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	reg = regexp.MustCompile(`CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+.*?AS\s+(.*)(?:\s+COMMENT\s+IS.*)?`)
+	reg = regexp.MustCompile(`CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?AS\s+(.*)(?:\s+COMMENT\s+IS.*)?`)
 )
 
 type View struct {
