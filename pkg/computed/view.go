@@ -1,7 +1,6 @@
 package computed
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -31,11 +30,11 @@ func ReadView(c *exasol.Conn, schema, name string) (*View, error) {
 		name,
 	}, "SYS")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Selecting View Metadata for %s.%s failed: %s", schema, name, err)
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("Selecting view resulted in no result")
+		return nil, fmt.Errorf("Selecting View Metadata for %s.%s resulted in no result", schema, name)
 	}
 
 	row := res[0]
@@ -80,7 +79,7 @@ ORDER BY COLUMN_ORDINAL_POSITION`
 		view,
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Selecting VIEW Columns for %s.%s failed: %s", schema, view, err)
 	}
 
 	b := &strings.Builder{}
