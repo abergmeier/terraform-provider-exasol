@@ -21,12 +21,12 @@ func Resource() *schema.Resource {
 			"schema": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "Name of Schema to create View in",
+				Description: "Name of Schema that View is in",
 			},
 			"composite": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "composite which might be used to create View columns",
+				Description: "Composite which might be used to create View columns",
 			},
 			"subquery": {
 				Type:        schema.TypeString,
