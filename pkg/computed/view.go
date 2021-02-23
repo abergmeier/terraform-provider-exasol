@@ -105,7 +105,7 @@ func readViewSubquery(row []interface{}) (string, error) {
 
 	submatch := reg.FindSubmatch([]byte(text))
 	if len(submatch) == 0 {
-		return "", fmt.Errorf("Matching CREATE text failed: %s", text)
+		return "", fmt.Errorf("Regex matching Views CREATE text failed: %s", text)
 	}
 	if len(submatch) != 2 {
 		return "", fmt.Errorf("Extracting subquery failed: %s", text)
