@@ -16,6 +16,7 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/resource"
 	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -74,11 +75,11 @@ func Resource() *schema.Resource {
 			customdiff.ForceNewIf("subquery", isReplaceFalse),
 			customdiff.ForceNewIf("like", isReplaceFalse),
 		),
-		Create: create,
-		Read:   read,
-		Update: update,
-		Delete: delete,
-		Exists: exists,
+		Create:      create,
+		ReadContext: read,
+		Update:      update,
+		Delete:      delete,
+		Exists:      exists,
 		Importer: &schema.ResourceImporter{
 			State: imp,
 		},
@@ -333,41 +334,43 @@ func importData(d internal.Data, c *exasol.Conn) error {
 	return postCreate(d, c, m.Schema, m.ObjectName)
 }
 
-func read(d *schema.ResourceData, meta interface{}) error {
+func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
 	return readData(d, locked.Conn)
 }
 
-func readData(d internal.Data, c *exasol.Conn) error {
+func readData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
 	name, err := argument.Name(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	schema, err := argument.Schema(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
+
+	var diags diag.Diagnostics
 
 	tr, err := computed.ReadTable(c, schema, name)
 	if err != nil {
-		return err
+		return append(diags, diag.FromErr(err)...)
 	}
 
 	err = tr.SetComment(d)
 	if err != nil {
-		return err
+		return append(diags, diag.FromErr(err)...)
 	}
 
 	err = d.Set("columns", tr.Columns)
 	if err != nil {
-		return err
+		return append(diags, diag.FromErr(err)...)
 	}
 
 	err = d.Set("column_indices", tr.ColumnIndices)
 	if err != nil {
-		return err
+		return append(diags, diag.FromErr(err)...)
 	}
 
 	handled := false
@@ -386,22 +389,22 @@ func readData(d internal.Data, c *exasol.Conn) error {
 		// Update composite value
 		err = d.Set("composite", tr.Composite)
 		if err != nil {
-			return err
+			return append(diags, diag.FromErr(err)...)
 		}
 	}
 
 	err = d.Set("primary_key_indices", tr.PrimaryKeys)
 	if err != nil {
-		return err
+		return append(diags, diag.FromErr(err)...)
 	}
 
 	err = d.Set("foreign_key_indices", tr.ForeignKeys)
 	if err != nil {
-		return err
+		return append(diags, diag.FromErr(err)...)
 	}
 
 	d.SetId(resource.NewID(schema, name))
-	return nil
+	return diags
 }
 
 func update(d *schema.ResourceData, meta interface{}) error {

@@ -27,9 +27,9 @@ func TestReadPhysicalSchema(t *testing.T) {
 		},
 	}
 
-	err = readPhysicalSchemaData(read, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
+	diags := readPhysicalSchemaData(read, locked.Conn)
+	if diags.HasError() {
+		t.Fatal("Unexpected error:", diags)
 	}
 
 	n := read.Get("name")

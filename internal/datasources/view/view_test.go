@@ -32,9 +32,9 @@ func TestRead(t *testing.T) {
 		},
 	}
 
-	err = readData(d, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
+	diags := readData(d, locked.Conn)
+	if diags.HasError() {
+		t.Fatal("Unexpected error:", diags)
 	}
 
 	comp := d.Get("composite").(string)

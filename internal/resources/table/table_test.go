@@ -217,9 +217,9 @@ func TestRename(t *testing.T) {
 		},
 	}
 
-	err = readData(read, locked.Conn)
-	if err != nil {
-		t.Fatal("Unknwon error:", err)
+	diags := readData(read, locked.Conn)
+	if diags.HasError() {
+		t.Fatal("Unknown error:", err)
 	}
 
 	composite := read.Get("composite").(string)

@@ -1,6 +1,7 @@
 package role
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
 	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -23,14 +25,14 @@ func Resource() *schema.Resource {
 				Description: "Name of Role",
 			},
 		},
-		Create: create,
-		Update: update,
-		Delete: delete,
-		Exists: exists,
+		Create:        create,
+		UpdateContext: update,
+		Delete:        delete,
+		Exists:        exists,
 		Importer: &schema.ResourceImporter{
-			State: imp,
+			StateContext: imp,
 		},
-		Read: read,
+		ReadContext: read,
 	}
 }
 
@@ -105,7 +107,7 @@ func existsData(d internal.Data, c internal.Conn) (bool, error) {
 	return role.Exists(c, name)
 }
 
-func imp(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+func imp(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
@@ -131,48 +133,52 @@ func importData(d internal.Data, c *exasol.Conn) error {
 		return err
 	}
 
-	return readData(d, c)
+	_, err = readData(d, c)
+	return err
 }
 
-func read(d *schema.ResourceData, meta interface{}) error {
+func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
-	return readData(d, locked.Conn)
+	diags, _ := readData(d, locked.Conn)
+	return diags
 }
 
-func readData(d internal.Data, c *exasol.Conn) error {
+func readData(d internal.Data, c *exasol.Conn) (diag.Diagnostics, error) {
 	name, err := argument.Name(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err), err
 	}
 	_, err = c.FetchSlice("SELECT ROLE_NAME FROM EXA_ALL_ROLES WHERE ROLE_NAME = ?", []interface{}{
 		name,
 	}, "SYS")
-	return err
+	return diag.FromErr(err), err
 }
 
-func update(d *schema.ResourceData, meta interface{}) error {
+func update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
-	err := updateData(d, locked.Conn)
-	if err != nil {
-		return err
+	diags := updateData(d, locked.Conn)
+	if diags.HasError() {
+		return diags
 	}
-	return locked.Conn.Commit()
+	err := locked.Conn.Commit()
+	return append(diags, diag.FromErr(err)...)
 }
 
-func updateData(d internal.Data, c *exasol.Conn) error {
+func updateData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
 
 	if d.HasChange("name") {
 		old, new := d.GetChange("name")
 
 		err := db.RenameGlobal(c, "ROLE", old.(string), new.(string))
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 	}
 
-	return readData(d, c)
+	diags, _ := readData(d, c)
+	return diags
 }

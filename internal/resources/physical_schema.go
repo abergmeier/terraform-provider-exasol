@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
 	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -23,11 +25,11 @@ func PhysicalSchema() *schema.Resource {
 				Description: "Name of Schema",
 			},
 		},
-		Create: createPhysicalSchema,
-		Read:   readPhysicalSchema,
-		Update: updatePhysicalSchema,
-		Delete: deletePhysicalSchema,
-		Exists: existsPhysicalSchema,
+		Create:      createPhysicalSchema,
+		ReadContext: readPhysicalSchema,
+		Update:      updatePhysicalSchema,
+		Delete:      deletePhysicalSchema,
+		Exists:      existsPhysicalSchema,
 		Importer: &schema.ResourceImporter{
 			State: importPhysicalSchema,
 		},
@@ -149,28 +151,28 @@ func importPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
 	return nil
 }
 
-func readPhysicalSchema(d *schema.ResourceData, meta interface{}) error {
+func readPhysicalSchema(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
 	return readPhysicalSchemaData(d, locked.Conn)
 }
 
-func readPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
+func readPhysicalSchemaData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
 	name, err := argument.Name(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	res, err := c.FetchSlice("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = FALSE ", []interface{}{
 		name,
 	}, "SYS")
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	if len(res) == 0 {
-		return fmt.Errorf("Schema %s not found", name)
+		return diag.Errorf("Schema %s not found", name)
 	}
 
 	d.SetId(strings.ToUpper(name))

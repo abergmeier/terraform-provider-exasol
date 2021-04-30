@@ -1,10 +1,13 @@
 package role
 
 import (
+	"context"
+
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -18,8 +21,8 @@ func Resource() *schema.Resource {
 				Description: "Name of Role",
 			},
 		},
-		Exists: exists,
-		Read:   read,
+		Exists:      exists,
+		ReadContext: read,
 	}
 }
 
@@ -51,20 +54,20 @@ func Exists(c internal.Conn, name string) (bool, error) {
 	return len(res) != 0, nil
 }
 
-func read(d *schema.ResourceData, meta interface{}) error {
+func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
 	return readData(d, locked.Conn)
 }
 
-func readData(d internal.Data, c *exasol.Conn) error {
+func readData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
 	name, err := argument.Name(d)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	_, err = c.FetchSlice("SELECT ROLE_NAME FROM EXA_ALL_ROLES WHERE ROLE_NAME = ?", []interface{}{
 		name,
 	}, "SYS")
-	return err
+	return diag.FromErr(err)
 }
