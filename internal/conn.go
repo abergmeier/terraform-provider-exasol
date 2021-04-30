@@ -2,6 +2,6 @@ package internal
 
 type Conn interface {
 	Commit() error
-	Execute(string, ...interface{}) (map[string]interface{}, error)
-	FetchSlice(string, ...interface{}) ([][]interface{}, error)
+	Execute(sql string, args ...interface{}) (rowsAffected int64, err error)
+	FetchSlice(sql string, args ...interface{}) (res [][]interface{}, err error)
 }

@@ -25,7 +25,10 @@ func NewClient(conf exasol.ConnConf) *Client {
 }
 
 func newConnect(conf exasol.ConnConf) *exasol.Conn {
-	conn := exasol.Connect(conf)
+	conn, err := exasol.Connect(conf)
+	if err != nil {
+		panic(err)
+	}
 	conn.DisableAutoCommit()
 	return conn
 }

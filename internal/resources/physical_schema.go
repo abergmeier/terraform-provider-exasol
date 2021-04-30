@@ -2,7 +2,6 @@ package resources
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -97,27 +96,14 @@ func existsPhysicalSchema(d *schema.ResourceData, meta interface{}) (bool, error
 
 func existsPhysicalSchemaData(d internal.Data, c *exasol.Conn) (bool, error) {
 
-	result, err := c.Execute("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?)", [][]interface{}{
-		{
-			d.Id(),
-		},
+	result, err := c.FetchSlice("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?)", []interface{}{
+		d.Id(),
 	}, "SYS")
 	if err != nil {
 		return false, err
 	}
 
-	results := result["results"].([]interface{})[0].(map[string]interface{})["resultSet"].(map[string]interface{})
-	ri := results["numRows"]
-	if ri == nil {
-		return false, errors.New("numRows is nil")
-	}
-
-	rows, ok := ri.(float64)
-	if !ok {
-		return false, errors.New("numRows not float64")
-	}
-
-	return rows > 0.0, nil
+	return len(result) == 1, nil
 }
 
 func importPhysicalSchema(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {

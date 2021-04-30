@@ -13,10 +13,11 @@ func Commit(t *testing.T, c internal.Conn) {
 	}
 }
 
-func Execute(t *testing.T, c internal.Conn, stmt string) map[string]interface{} {
-	res, err := c.Execute(stmt)
+func Execute(t *testing.T, c internal.Conn, stmt string) (rowsAffected int64) {
+	var err error
+	rowsAffected, err = c.Execute(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return res
+	return rowsAffected
 }

@@ -5,8 +5,10 @@
 package globallock
 
 import (
-	"strings"
+	"regexp"
 )
+
+var rollbackExp = regexp.MustCompile("GlobalTransactionRollback msg: Transaction collision: automatic transaction rollback.")
 
 // IsRollbackError checks whether there is an error
 // and whether the error is due to an Exasol
@@ -17,5 +19,5 @@ func IsRollbackError(err error) bool {
 	}
 
 	// Currently there seems to be no better way than to compare error strings
-	return strings.HasPrefix(err.Error(), "GlobalTransactionRollback msg: Transaction collision: automatic transaction rollback.")
+	return rollbackExp.MatchString(err.Error())
 }
