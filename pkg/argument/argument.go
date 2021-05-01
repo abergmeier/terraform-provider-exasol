@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/binding"
 )
 
 var (
@@ -13,7 +13,7 @@ var (
 )
 
 // Name extracts name of Data
-func Name(d internal.Data) (string, error) {
+func Name(d binding.Data) (string, error) {
 	name := d.Get("name").(string)
 
 	if name == "" {
@@ -23,7 +23,7 @@ func Name(d internal.Data) (string, error) {
 }
 
 // Schema extracts schema of Data
-func Schema(d internal.Data) (string, error) {
+func Schema(d binding.Data) (string, error) {
 	name := d.Get("schema").(string)
 	if name == "" {
 		return "", fmt.Errorf("Empty schema for %s", d)

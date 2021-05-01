@@ -7,6 +7,7 @@ import (
 
 	drole "github.com/abergmeier/terraform-provider-exasol/internal/datasources/role"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-provider-exasol/internal/resourceprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -24,7 +25,7 @@ func TestAccExasolRole_rename(t *testing.T) {
 
 	renamedDbName := fmt.Sprintf("%s_RENAMED", dbName)
 
-	ps := test.NewDefaultAccProviders()
+	ps := test.NewDefaultAccProviders(resourceprovider.Provider())
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:          nil,
 		ProviderFactories: ps.Factories,
@@ -60,19 +61,19 @@ func TestAccExasolRole_import(t *testing.T) {
 
 	dbName := fmt.Sprintf("%s_%s", t.Name(), roleSuffix)
 
-	locked := exaClient.Lock()
-	defer locked.Unlock()
+	conn := test.OpenManualConnectionInTest(t, exaClient)
+	defer conn.Close()
 	tryDeleteRole := func() {
 		stmt := fmt.Sprintf(`DROP ROLE %s`, dbName)
-		_, err := locked.Conn.Execute(stmt)
+		_, err := conn.Conn.Execute(stmt)
 		if err != nil {
 			return
 		}
-		locked.Conn.Commit()
+		conn.Conn.Commit()
 	}
 	defer tryDeleteRole()
 
-	ps := test.NewDefaultAccProviders()
+	ps := test.NewDefaultAccProviders(resourceprovider.Provider())
 
 	resource.ParallelTest(t, resource.TestCase{
 		ProviderFactories: ps.Factories,
@@ -104,10 +105,10 @@ func testExistsNotByName(p *schema.Provider, actualName string) resource.TestChe
 	return func(state *terraform.State) error {
 
 		c := p.Meta().(*exaprovider.Client)
-		locked := c.Lock()
-		defer locked.Unlock()
+		conn := test.OpenManualConnection(c)
+		defer conn.Close()
 
-		exists, err := drole.Exists(locked.Conn, actualName)
+		exists, err := drole.Exists(conn.Conn, actualName)
 		if err != nil {
 			return err
 		}
@@ -135,10 +136,10 @@ func testExist(p *schema.Provider, id string) resource.TestCheckFunc {
 		}
 
 		c := p.Meta().(*exaprovider.Client)
-		locked := c.Lock()
-		defer locked.Unlock()
+		conn := test.OpenManualConnection(c)
+		defer conn.Close()
 
-		exists, err := drole.Exists(locked.Conn, actualName)
+		exists, err := drole.Exists(conn.Conn, actualName)
 		if err != nil {
 			return err
 		}

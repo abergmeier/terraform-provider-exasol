@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/grantstreetgroup/go-exasol-client"
 )
 
@@ -16,7 +16,7 @@ var (
 )
 
 func init() {
-	exaConf = internal.MustCreateTestConf()
+	exaConf = test.MustCreateConf()
 }
 
 func TestMain(m *testing.M) {
@@ -25,7 +25,11 @@ func TestMain(m *testing.M) {
 }
 
 func testRun(m *testing.M) int {
-	exaClient = exaprovider.NewClient(exaConf)
+	c, err := exaprovider.NewClient(exaConf, "")
+	if err != nil {
+		panic(err)
+	}
+	exaClient = c
 
 	return m.Run()
 }

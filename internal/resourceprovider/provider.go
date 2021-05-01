@@ -3,16 +3,16 @@ package resourceprovider
 import (
 	"context"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
-	"github.com/abergmeier/terraform-provider-exasol/internal/datasources"
+	"github.com/abergmeier/terraform-provider-exasol/internal/binding"
 	dconn "github.com/abergmeier/terraform-provider-exasol/internal/datasources/connection"
 	drole "github.com/abergmeier/terraform-provider-exasol/internal/datasources/role"
+	dschema "github.com/abergmeier/terraform-provider-exasol/internal/datasources/schema"
 	dtable "github.com/abergmeier/terraform-provider-exasol/internal/datasources/table"
 	dview "github.com/abergmeier/terraform-provider-exasol/internal/datasources/view"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
-	"github.com/abergmeier/terraform-provider-exasol/internal/resources"
 	rconn "github.com/abergmeier/terraform-provider-exasol/internal/resources/connection"
 	rrole "github.com/abergmeier/terraform-provider-exasol/internal/resources/role"
+	rschema "github.com/abergmeier/terraform-provider-exasol/internal/resources/schema"
 	rtable "github.com/abergmeier/terraform-provider-exasol/internal/resources/table"
 	ruser "github.com/abergmeier/terraform-provider-exasol/internal/resources/user"
 	"github.com/grantstreetgroup/go-exasol-client"
@@ -24,14 +24,14 @@ func Provider() *schema.Provider {
 	provider := &schema.Provider{
 		DataSourcesMap: map[string]*schema.Resource{
 			"exasol_connection":      dconn.Resource(),
-			"exasol_physical_schema": datasources.PhysicalSchema(),
+			"exasol_physical_schema": dschema.PhysicalSchema(),
 			"exasol_role":            drole.Resource(),
 			"exasol_table":           dtable.Resource(),
 			"exasol_view":            dview.Resource(),
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"exasol_connection":      rconn.Resource(),
-			"exasol_physical_schema": resources.PhysicalSchema(),
+			"exasol_physical_schema": rschema.PhysicalSchema(),
 			"exasol_role":            rrole.Resource(),
 			"exasol_table":           rtable.Resource(),
 			"exasol_user":            ruser.Resource(),
@@ -58,6 +58,10 @@ func Provider() *schema.Provider {
 				Optional: true,
 				Default:  8563,
 			},
+			"google_cache_bucket": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 	}
 	provider.ConfigureContextFunc = func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
@@ -74,7 +78,7 @@ func Provider() *schema.Provider {
 	return provider
 }
 
-func providerConfigure(d internal.Data) (interface{}, error) {
+func providerConfigure(d binding.Data) (interface{}, error) {
 
 	conf := exasol.ConnConf{
 		Host:     d.Get("ip").(string),
@@ -83,5 +87,11 @@ func providerConfigure(d internal.Data) (interface{}, error) {
 		Password: d.Get("password").(string),
 	}
 
-	return exaprovider.NewClient(conf), nil
+	bucket := d.Get("google_cache_bucket")
+
+	if bucket == nil {
+		return exaprovider.NewClient(conf, "")
+	} else {
+		return exaprovider.NewClient(conf, bucket.(string))
+	}
 }

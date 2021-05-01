@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-provider-exasol/internal/resourceprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/resources/user"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
@@ -23,7 +24,7 @@ func TestAccExasolUser_rename(t *testing.T) {
 
 	renamedDbName := fmt.Sprintf("%s_RENAMED", dbName)
 
-	ps := test.NewDefaultAccProviders()
+	ps := test.NewDefaultAccProviders(resourceprovider.Provider())
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:          nil,
@@ -63,10 +64,10 @@ func testExistsNotByName(p *schema.Provider, actualName string) resource.TestChe
 	return func(state *terraform.State) error {
 
 		c := p.Meta().(*exaprovider.Client)
-		locked := c.Lock()
-		defer locked.Unlock()
+		conn := test.OpenManualConnection(c)
+		defer conn.Close()
 
-		exists, err := user.Exists(locked.Conn, actualName)
+		exists, err := user.Exists(conn.Conn, actualName)
 		if err != nil {
 			return err
 		}
@@ -94,10 +95,10 @@ func testExist(p *schema.Provider, id string) resource.TestCheckFunc {
 		}
 
 		c := p.Meta().(*exaprovider.Client)
-		locked := c.Lock()
-		defer locked.Unlock()
+		conn := test.OpenManualConnection(c)
+		defer conn.Close()
 
-		exists, err := user.Exists(locked.Conn, actualName)
+		exists, err := user.Exists(conn.Conn, actualName)
 		if err != nil {
 			return err
 		}

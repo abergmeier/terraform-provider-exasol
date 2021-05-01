@@ -1,4 +1,4 @@
-package internal
+package binding
 
 type Conn interface {
 	Commit() error

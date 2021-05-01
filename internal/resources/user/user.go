@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/binding"
+	"github.com/abergmeier/terraform-provider-exasol/internal/cached"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/globallock"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
@@ -45,35 +46,44 @@ func Resource() *schema.Resource {
 				ExactlyOneOf: []string{"ldap", "kerberos", "password"},
 			},
 		},
-		CreateContext: create,
-		UpdateContext: update,
-		DeleteContext: delete,
-		Exists:        exists,
-		Importer: &schema.ResourceImporter{
-			StateContext: imp,
+		CreateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+			return globallock.RunAndRetryRollbacks(func() error {
+				return cached.Create(create, d, meta)
+			})
 		},
-		ReadContext: read,
+		ReadContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+			return cached.ReadContext(read, ctx, d, meta)
+		},
+		UpdateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+			return globallock.RunAndRetryRollbacks(func() error {
+				return cached.Update(update, d, meta)
+			})
+		},
+		DeleteContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+			return globallock.RunAndRetryRollbacks(func() error {
+				return cached.Delete(delete, d, meta)
+			})
+		},
+		Exists: func(d *schema.ResourceData, meta interface{}) (bool, error) {
+			return cached.Exists(exists, d, meta)
+		},
+		Importer: &schema.ResourceImporter{
+			StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+				return cached.ImporterStateContext(imp, ctx, d, meta)
+			},
+		},
 	}
 }
 
-func create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*exaprovider.Client)
-	err := globallock.RunAndRetryRollbacks(func() error {
-		locked := c.Lock()
-		defer locked.Unlock()
-		err := createData(d, locked.Conn)
-		if err != nil {
-			return err
-		}
-		return locked.Conn.Commit()
-	})
+func create(d *schema.ResourceData, conn *exaprovider.Connection) error {
+	err := createData(d, conn.Conn)
 	if err != nil {
-		return diag.FromErr(err)
+		return err
 	}
-	return nil
+	return conn.Conn.Commit()
 }
 
-func createData(d internal.Data, c *exasol.Conn) error {
+func createData(d binding.Data, c *exasol.Conn) error {
 
 	name, err := argument.Name(d)
 	if err != nil {
@@ -104,24 +114,16 @@ func createData(d internal.Data, c *exasol.Conn) error {
 	return err
 }
 
-func delete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	err := globallock.RunAndRetryRollbacks(func() error {
-		c := meta.(*exaprovider.Client)
-		locked := c.Lock()
-		defer locked.Unlock()
-		err := deleteData(d, locked.Conn)
-		if err != nil {
-			return err
-		}
-		return locked.Conn.Commit()
-	})
+func delete(d *schema.ResourceData, conn *exaprovider.Connection) error {
+
+	err := deleteData(d, conn.Conn)
 	if err != nil {
-		return diag.FromErr(err)
+		return err
 	}
-	return nil
+	return conn.Conn.Commit()
 }
 
-func deleteData(d internal.Data, c *exasol.Conn) error {
+func deleteData(d binding.Data, c *exasol.Conn) error {
 
 	name, err := argument.Name(d)
 	if err != nil {
@@ -138,14 +140,11 @@ func deleteData(d internal.Data, c *exasol.Conn) error {
 	return nil
 }
 
-func exists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	return existsData(d, locked.Conn)
+func exists(d *schema.ResourceData, conn *exaprovider.Connection) (bool, error) {
+	return existsData(d, conn.Conn)
 }
 
-func existsData(d internal.Data, c internal.Conn) (bool, error) {
+func existsData(d binding.Data, c binding.Conn) (bool, error) {
 	name, err := argument.Name(d)
 	if err != nil {
 		return false, err
@@ -154,7 +153,7 @@ func existsData(d internal.Data, c internal.Conn) (bool, error) {
 	return Exists(c, name)
 }
 
-func Exists(c internal.Conn, name string) (bool, error) {
+func Exists(c binding.Conn, name string) (bool, error) {
 	res, err := c.FetchSlice("SELECT CREATED FROM EXA_ALL_USERS WHERE UPPER(USER_NAME) = UPPER(?)", []interface{}{
 		name,
 	}, "SYS")
@@ -165,18 +164,15 @@ func Exists(c internal.Conn, name string) (bool, error) {
 	return len(res) != 0, nil
 }
 
-func imp(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	err := importData(d, locked.Conn)
+func imp(ctx context.Context, d *schema.ResourceData, conn *exaprovider.Connection) ([]*schema.ResourceData, error) {
+	err := importData(d, conn.Conn)
 	if err != nil {
 		return nil, err
 	}
 	return []*schema.ResourceData{d}, nil
 }
 
-func importData(d internal.Data, c internal.Conn) error {
+func importData(d binding.Data, c binding.Conn) error {
 	name := d.Id()
 	if name == "" {
 		return errors.New("Import expects id to be set")
@@ -193,18 +189,15 @@ func importData(d internal.Data, c internal.Conn) error {
 	return err
 }
 
-func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	err := readData(d, locked.Conn)
+func read(ctx context.Context, d *schema.ResourceData, conn *exaprovider.Connection) diag.Diagnostics {
+	err := readData(d, conn.Conn)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	return nil
 }
 
-func readData(d internal.Data, c internal.Conn) error {
+func readData(d binding.Data, c binding.Conn) error {
 	name, err := argument.Name(d)
 	if err != nil {
 		return err
@@ -256,24 +249,15 @@ func readData(d internal.Data, c internal.Conn) error {
 	return nil
 }
 
-func update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*exaprovider.Client)
-	err := globallock.RunAndRetryRollbacks(func() error {
-		locked := c.Lock()
-		defer locked.Unlock()
-		err := updateData(d, locked.Conn)
-		if err != nil {
-			return err
-		}
-		return locked.Conn.Commit()
-	})
+func update(d *schema.ResourceData, conn *exaprovider.Connection) error {
+	err := updateData(d, conn.Conn)
 	if err != nil {
-		return diag.FromErr(err)
+		return err
 	}
-	return nil
+	return conn.Conn.Commit()
 }
 
-func updateData(d internal.Data, c *exasol.Conn) error {
+func updateData(d binding.Data, c *exasol.Conn) error {
 
 	if d.HasChange("name") {
 		old, new := d.GetChange("name")

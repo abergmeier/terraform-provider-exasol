@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/binding"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -25,7 +25,7 @@ type TableReader struct {
 	distributes   []string
 }
 
-func (tr *TableReader) SetComment(d internal.Data) error {
+func (tr *TableReader) SetComment(d binding.Data) error {
 	return setComment(tr.Comment, d)
 }
 

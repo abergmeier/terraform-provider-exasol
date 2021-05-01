@@ -1,4 +1,4 @@
-package internal
+package binding
 
 type Data interface {
 	Get(name string) interface{}

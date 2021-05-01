@@ -1,30 +1,30 @@
-package resources
+package schema
 
 import (
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 )
 
 func TestCreatePhysicalSchema(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
-	defer locked.Unlock()
+	conn := test.OpenManualConnectionInTest(t, exaClient)
+	defer conn.Close()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	create := &internal.TestData{
+	create := &test.Data{
 		Values: map[string]interface{}{
 			"name": name,
 		},
 	}
 
-	deletePhysicalSchemaData(create, locked.Conn)
+	deletePhysicalSchemaData(create, conn.Conn)
 
-	err := createPhysicalSchemaData(create, locked.Conn)
+	err := createPhysicalSchemaData(create, conn.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -33,21 +33,21 @@ func TestCreatePhysicalSchema(t *testing.T) {
 func TestDeletePhysicalSchema(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
-	defer locked.Unlock()
+	conn := test.OpenManualConnectionInTest(t, exaClient)
+	defer conn.Close()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	delete := &internal.TestData{
+	delete := &test.Data{
 		Values: map[string]interface{}{
 			"name": name,
 		},
 	}
 	delete.SetId("foo")
 
-	createPhysicalSchemaData(delete, locked.Conn)
+	createPhysicalSchemaData(delete, conn.Conn)
 
-	err := deletePhysicalSchemaData(delete, locked.Conn)
+	err := deletePhysicalSchemaData(delete, conn.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -59,20 +59,20 @@ func TestDeletePhysicalSchema(t *testing.T) {
 func TestExistsPhysicalSchema(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
-	defer locked.Unlock()
+	conn := test.OpenManualConnectionInTest(t, exaClient)
+	defer conn.Close()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	exists := &internal.TestData{
+	exists := &test.Data{
 		Values: map[string]interface{}{
 			"name": name,
 		},
 	}
 
-	deletePhysicalSchemaData(exists, locked.Conn)
+	deletePhysicalSchemaData(exists, conn.Conn)
 
-	e, err := existsPhysicalSchemaData(exists, locked.Conn)
+	e, err := existsPhysicalSchemaData(exists, conn.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -81,9 +81,9 @@ func TestExistsPhysicalSchema(t *testing.T) {
 		t.Fatal("Expected exists to be false")
 	}
 
-	createPhysicalSchemaData(exists, locked.Conn)
+	createPhysicalSchemaData(exists, conn.Conn)
 
-	e, err = existsPhysicalSchemaData(exists, locked.Conn)
+	e, err = existsPhysicalSchemaData(exists, conn.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -96,12 +96,12 @@ func TestExistsPhysicalSchema(t *testing.T) {
 func TestImportPhysicalSchema(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
-	defer locked.Unlock()
+	conn := test.OpenManualConnectionInTest(t, exaClient)
+	defer conn.Close()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	imp := &internal.TestData{
+	imp := &test.Data{
 		Values: map[string]interface{}{
 			"name": name,
 		},
@@ -109,12 +109,12 @@ func TestImportPhysicalSchema(t *testing.T) {
 	imp.SetId("TestImportPhysicalSchemaWithOtherName")
 
 	stmt := "CREATE SCHEMA IF NOT EXISTS TestImportPhysicalSchemaWithOtherName"
-	_, err := locked.Conn.Execute(stmt)
+	_, err := conn.Conn.Execute(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = importPhysicalSchemaData(imp, locked.Conn)
+	err = importPhysicalSchemaData(imp, conn.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -130,26 +130,26 @@ func TestImportPhysicalSchema(t *testing.T) {
 func TestReadPhysicalSchema(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
-	defer locked.Unlock()
+	conn := test.OpenManualConnectionInTest(t, exaClient)
+	defer conn.Close()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	create := &internal.TestData{
+	create := &test.Data{
 		Values: map[string]interface{}{
 			"name": name,
 		},
 	}
 
-	read := &internal.TestData{
+	read := &test.Data{
 		Values: map[string]interface{}{
 			"name": name,
 		},
 	}
 
-	createPhysicalSchemaData(create, locked.Conn)
+	createPhysicalSchemaData(create, conn.Conn)
 
-	err := readPhysicalSchemaData(read, locked.Conn)
+	err := readPhysicalSchemaData(read, conn.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -162,21 +162,21 @@ func TestReadPhysicalSchema(t *testing.T) {
 func TestRenamePhysicalSchema(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
-	defer locked.Unlock()
+	conn := test.OpenManualConnectionInTest(t, exaClient)
+	defer conn.Close()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	create := &internal.TestData{
+	create := &test.Data{
 		Values: map[string]interface{}{
 			"name": name,
 		},
 	}
 
-	createPhysicalSchemaData(create, locked.Conn)
+	createPhysicalSchemaData(create, conn.Conn)
 
 	newName := name + "_SHINY"
-	rename := &internal.TestData{
+	rename := &test.Data{
 		Values: map[string]interface{}{
 			"name": name,
 		},
@@ -185,7 +185,7 @@ func TestRenamePhysicalSchema(t *testing.T) {
 		},
 	}
 
-	err := updatePhysicalSchemaData(rename, locked.Conn)
+	err := updatePhysicalSchemaData(rename, conn.Conn)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}

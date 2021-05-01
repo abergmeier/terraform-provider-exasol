@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/andreyvit/diff"
 )
 
@@ -13,26 +13,26 @@ func TestRead(t *testing.T) {
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
-	defer locked.Unlock()
+	conn := test.OpenManualConnectionInTest(t, exaClient)
+	defer conn.Close()
 
-	_, err := locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s_TABLE (A CHAR(10), B VARCHAR(20), C INT)", name), nil, schemaName)
+	_, err := conn.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s_TABLE (A CHAR(10), B VARCHAR(20), C INT)", name), nil, schemaName)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE VIEW %s_VIEW (VA COMMENT IS 'FOO', VB, VC) AS SELECT A, B, C FROM %s_TABLE AS T", name, name), nil, schemaName)
+	_, err = conn.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE VIEW %s_VIEW (VA COMMENT IS 'FOO', VB, VC) AS SELECT A, B, C FROM %s_TABLE AS T", name, name), nil, schemaName)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	d := &internal.TestData{
+	d := &test.Data{
 		Values: map[string]interface{}{
 			"name":   fmt.Sprintf("%s_VIEW", name),
 			"schema": schemaName,
 		},
 	}
 
-	diags := readData(d, locked.Conn)
+	diags := readData(d, conn.Conn)
 	if diags.HasError() {
 		t.Fatal("Unexpected error:", diags)
 	}

@@ -3,13 +3,13 @@ package computed
 import (
 	"fmt"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/binding"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 )
 
 // ReadConnection reads all attributes from Database.
 // Will return EmptyConnectionName for empty name
-func ReadConnection(d internal.Data, c internal.Conn) error {
+func ReadConnection(d binding.Data, c binding.Conn) error {
 
 	name, err := argument.Name(d)
 	if err != nil {

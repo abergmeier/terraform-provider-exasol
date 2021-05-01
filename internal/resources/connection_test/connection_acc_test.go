@@ -5,7 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/binding"
+	"github.com/abergmeier/terraform-provider-exasol/internal/resourceprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/resources/connection"
 	"github.com/abergmeier/terraform-provider-exasol/internal/resources/root"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
@@ -24,7 +25,7 @@ func TestAccExasolConnection_rename(t *testing.T) {
 	dbName := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 	renamedDbName := fmt.Sprintf("%s_RENAMED", dbName)
 
-	ps := test.NewDefaultAccProviders()
+	ps := test.NewDefaultAccProviders(resourceprovider.Provider())
 	resource.ParallelTest(t, resource.TestCase{
 		ProviderFactories: ps.Factories,
 		Steps: []resource.TestStep{
@@ -63,30 +64,30 @@ func TestAccExasolConnection_import(t *testing.T) {
 
 	dbName := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
-	defer locked.Unlock()
+	conn := test.OpenManualConnectionInTest(t, exaClient)
+	defer conn.Close()
 
 	createConnection := func() {
 		stmt := fmt.Sprintf(`CREATE OR REPLACE CONNECTION %s
 TO 'ftp://192.168.1.1/'
 USER 'agent_007'
 IDENTIFIED BY 'secret'`, dbName)
-		test.Execute(t, locked.Conn, stmt)
-		test.Commit(t, locked.Conn)
+		test.Execute(t, conn.Conn, stmt)
+		test.Commit(t, conn.Conn)
 	}
 
 	tryDeleteConnection := func() {
 		stmt := fmt.Sprintf(`DROP CONNECTION %s`, dbName)
-		_, err := locked.Conn.Execute(stmt)
+		_, err := conn.Conn.Execute(stmt)
 		if err != nil {
 			return
 		}
-		locked.Conn.Commit()
+		conn.Conn.Commit()
 	}
 	defer tryDeleteConnection()
 
 	resource.ParallelTest(t, resource.TestCase{
-		ProviderFactories: test.NewDefaultAccProviders().Factories,
+		ProviderFactories: test.NewDefaultAccProviders(resourceprovider.Provider()).Factories,
 		Steps: []resource.TestStep{
 			{
 				PreConfig: tryDeleteConnection,
@@ -135,7 +136,7 @@ func testExists(p *schema.Provider, id string) resource.TestCheckFunc {
 			return err
 		}
 
-		return test.True(p, func(c internal.Conn) (bool, error) {
+		return test.True(p, func(c binding.Conn) (bool, error) {
 			return connection.Exists(c, actualName)
 		})(state)
 	}
@@ -143,7 +144,7 @@ func testExists(p *schema.Provider, id string) resource.TestCheckFunc {
 
 func testExistsNotByName(p *schema.Provider, actualName string) resource.TestCheckFunc {
 
-	return test.False(p, func(c internal.Conn) (bool, error) {
+	return test.False(p, func(c binding.Conn) (bool, error) {
 		return connection.Exists(c, actualName)
 	})
 }

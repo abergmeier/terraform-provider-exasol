@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/globallock"
+	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 )
 
 func TestCreateConnection(t *testing.T) {
@@ -14,21 +14,21 @@ func TestCreateConnection(t *testing.T) {
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	err := globallock.RunAndRetryRollbacks(func() error {
-		locked := exaClient.Lock()
-		defer locked.Unlock()
+		conn := test.OpenManualConnectionInTest(t, exaClient)
+		defer conn.Close()
 
-		create := &internal.TestData{
+		create := &test.Data{
 			Values: map[string]interface{}{
 				"name": name,
 				"to":   "me",
 			},
 		}
-		err := deleteConnectionData(create, locked.Conn)
+		err := deleteConnectionData(create, conn.Conn)
 		if globallock.IsRollbackError(err) {
 			return err
 		}
 
-		err = createConnectionData(create, locked.Conn)
+		err = createConnectionData(create, conn.Conn)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err
@@ -51,28 +51,28 @@ func TestDeleteConnection(t *testing.T) {
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	err := globallock.RunAndRetryRollbacks(func() error {
-		locked := exaClient.Lock()
-		defer locked.Unlock()
+		conn := test.OpenManualConnectionInTest(t, exaClient)
+		defer conn.Close()
 
-		d := &internal.TestData{
+		d := &test.Data{
 			Values: map[string]interface{}{
 				"name": name,
 			},
 		}
-		err := deleteConnectionData(d, locked.Conn)
+		err := deleteConnectionData(d, conn.Conn)
 		if err == nil {
 			t.Fatal("Expected error")
 		} else if globallock.IsRollbackError(err) {
 			return err
 		}
 
-		create := &internal.TestData{
+		create := &test.Data{
 			Values: map[string]interface{}{
 				"name": name,
 				"to":   "me",
 			},
 		}
-		err = createConnectionData(create, locked.Conn)
+		err = createConnectionData(create, conn.Conn)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err
@@ -80,7 +80,7 @@ func TestDeleteConnection(t *testing.T) {
 			t.Fatal("Unexpected error:", err)
 		}
 
-		err = deleteConnectionData(d, locked.Conn)
+		err = deleteConnectionData(d, conn.Conn)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err
@@ -99,20 +99,20 @@ func TestExistsConnection(t *testing.T) {
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	err := globallock.RunAndRetryRollbacks(func() error {
-		locked := exaClient.Lock()
-		defer locked.Unlock()
+		conn := test.OpenManualConnectionInTest(t, exaClient)
+		defer conn.Close()
 
-		exists := &internal.TestData{
+		exists := &test.Data{
 			Values: map[string]interface{}{
 				"name": name,
 			},
 		}
 
-		err := deleteConnectionData(exists, locked.Conn)
+		err := deleteConnectionData(exists, conn.Conn)
 		if globallock.IsRollbackError(err) {
 			return err
 		}
-		e, err := existsData(exists, locked.Conn)
+		e, err := existsData(exists, conn.Conn)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err
@@ -123,14 +123,14 @@ func TestExistsConnection(t *testing.T) {
 			t.Fatal("Expected exist to be false")
 		}
 
-		create := &internal.TestData{
+		create := &test.Data{
 			Values: map[string]interface{}{
 				"name": name,
 				"to":   "endpoint",
 			},
 		}
 
-		err = createConnectionData(create, locked.Conn)
+		err = createConnectionData(create, conn.Conn)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err
@@ -138,7 +138,7 @@ func TestExistsConnection(t *testing.T) {
 			t.Fatal("Unexpected error:", err)
 		}
 
-		e, err = existsData(exists, locked.Conn)
+		e, err = existsData(exists, conn.Conn)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err
@@ -160,34 +160,34 @@ func TestReadConnection(t *testing.T) {
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	err := globallock.RunAndRetryRollbacks(func() error {
-		locked := exaClient.Lock()
-		defer locked.Unlock()
+		conn := test.OpenManualConnectionInTest(t, exaClient)
+		defer conn.Close()
 
-		read := &internal.TestData{
+		read := &test.Data{
 			Values: map[string]interface{}{
 				"name": name,
 			},
 		}
 
-		err := deleteConnectionData(read, locked.Conn)
+		err := deleteConnectionData(read, conn.Conn)
 		if globallock.IsRollbackError(err) {
 			return err
 		}
-		err = readConnectionData(read, locked.Conn)
+		err = readConnectionData(read, conn.Conn)
 		if err == nil {
 			t.Fatal("Expected error by readConnectionData")
 		} else if globallock.IsRollbackError(err) {
 			return err
 		}
 
-		create := &internal.TestData{
+		create := &test.Data{
 			Values: map[string]interface{}{
 				"name": name,
 				"to":   "bar",
 			},
 		}
 
-		err = createConnectionData(create, locked.Conn)
+		err = createConnectionData(create, conn.Conn)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err
@@ -195,7 +195,7 @@ func TestReadConnection(t *testing.T) {
 			t.Fatal("Unexpected error:", err)
 		}
 
-		err = readConnectionData(read, locked.Conn)
+		err = readConnectionData(read, conn.Conn)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err
@@ -220,22 +220,22 @@ func TestImportConnection(t *testing.T) {
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	err := globallock.RunAndRetryRollbacks(func() error {
-		locked := exaClient.Lock()
-		defer locked.Unlock()
+		conn := test.OpenManualConnectionInTest(t, exaClient)
+		defer conn.Close()
 
-		deleteData := &internal.TestData{
+		deleteData := &test.Data{
 			Values: map[string]interface{}{
 				"name": name,
 			},
 		}
-		err := deleteConnectionData(deleteData, locked.Conn)
+		err := deleteConnectionData(deleteData, conn.Conn)
 		if globallock.IsRollbackError(err) {
 			return err
 		}
 
-		imp := &internal.TestData{}
+		imp := &test.Data{}
 		imp.SetId(name)
-		err = importConnectionData(imp, locked.Conn)
+		err = importConnectionData(imp, conn.Conn)
 		if err == nil {
 			t.Fatal("Expected error from importConnectionData")
 		} else if globallock.IsRollbackError(err) {
@@ -243,7 +243,7 @@ func TestImportConnection(t *testing.T) {
 		}
 
 		stmt := fmt.Sprintf("CREATE OR REPLACE CONNECTION %s TO 'http://foo' USER 'foo' IDENTIFIED BY 'bar'", name)
-		_, err = locked.Conn.Execute(stmt)
+		_, err = conn.Conn.Execute(stmt)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err
@@ -251,7 +251,7 @@ func TestImportConnection(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		err = importConnectionData(imp, locked.Conn)
+		err = importConnectionData(imp, conn.Conn)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err
@@ -288,29 +288,29 @@ func TestUpdateConnection(t *testing.T) {
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	err := globallock.RunAndRetryRollbacks(func() error {
-		locked := exaClient.Lock()
-		defer locked.Unlock()
+		conn := test.OpenManualConnectionInTest(t, exaClient)
+		defer conn.Close()
 
-		create := &internal.TestData{
+		create := &test.Data{
 			Values: map[string]interface{}{
 				"name": name,
 				"to":   "foo",
 			},
 		}
 
-		err := deleteConnectionData(create, locked.Conn)
+		err := deleteConnectionData(create, conn.Conn)
 		if globallock.IsRollbackError(err) {
 			return err
 		}
 
-		err = updateConnectionData(create, locked.Conn)
+		err = updateConnectionData(create, conn.Conn)
 		if err == nil {
 			t.Fatal("Expected error from updateConnectionData")
 		} else if globallock.IsRollbackError(err) {
 			return err
 		}
 
-		err = createConnectionData(create, locked.Conn)
+		err = createConnectionData(create, conn.Conn)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err
@@ -318,7 +318,7 @@ func TestUpdateConnection(t *testing.T) {
 			t.Fatal("Unexpected error:", err)
 		}
 
-		update := &internal.TestData{
+		update := &test.Data{
 			Values: map[string]interface{}{
 				"name":     name,
 				"to":       "bar",
@@ -326,7 +326,7 @@ func TestUpdateConnection(t *testing.T) {
 			},
 		}
 
-		err = updateConnectionData(update, locked.Conn)
+		err = updateConnectionData(update, conn.Conn)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err
@@ -334,13 +334,13 @@ func TestUpdateConnection(t *testing.T) {
 			t.Fatal("Unexpexted error:", err)
 		}
 
-		read := &internal.TestData{
+		read := &test.Data{
 			Values: map[string]interface{}{
 				"name": name,
 			},
 		}
 
-		err = readConnectionData(read, locked.Conn)
+		err = readConnectionData(read, conn.Conn)
 		if err != nil {
 			if globallock.IsRollbackError(err) {
 				return err

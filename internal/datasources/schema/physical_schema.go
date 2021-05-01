@@ -1,10 +1,11 @@
-package datasources
+package schema
 
 import (
 	"context"
 	"strings"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/binding"
+	"github.com/abergmeier/terraform-provider-exasol/internal/cached"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -20,18 +21,17 @@ func PhysicalSchema() *schema.Resource {
 				Description: "Name of Schema",
 			},
 		},
-		ReadContext: readPhysicalSchema,
+		ReadContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+			return cached.ReadContext(read, ctx, d, meta)
+		},
 	}
 }
 
-func readPhysicalSchema(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	return readPhysicalSchemaData(d, locked.Conn)
+func read(ctx context.Context, d *schema.ResourceData, conn *exaprovider.Connection) diag.Diagnostics {
+	return readPhysicalSchemaData(d, conn.Conn)
 }
 
-func readPhysicalSchemaData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
+func readPhysicalSchemaData(d binding.Data, c *exasol.Conn) diag.Diagnostics {
 	name := d.Get("name").(string)
 
 	res, err := c.FetchSlice("SELECT SCHEMA_NAME FROM EXA_ALL_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = FALSE ", []interface{}{

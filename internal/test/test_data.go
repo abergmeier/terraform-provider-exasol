@@ -1,12 +1,12 @@
-package internal
+package test
 
-type TestData struct {
+type Data struct {
 	id        string
 	Values    map[string]interface{}
 	NewValues map[string]interface{}
 }
 
-func (d *TestData) Get(name string) interface{} {
+func (d *Data) Get(name string) interface{} {
 	v, ok := d.Values[name]
 	if !ok {
 		return nil
@@ -14,12 +14,12 @@ func (d *TestData) Get(name string) interface{} {
 	return v
 }
 
-func (d *TestData) GetOk(name string) (interface{}, bool) {
+func (d *Data) GetOk(name string) (interface{}, bool) {
 	v, ok := d.Values[name]
 	return v, ok
 }
 
-func (d *TestData) Set(name string, value interface{}) error {
+func (d *Data) Set(name string, value interface{}) error {
 	if d.Values == nil {
 		d.Values = map[string]interface{}{}
 	}
@@ -27,19 +27,19 @@ func (d *TestData) Set(name string, value interface{}) error {
 	return nil
 }
 
-func (d *TestData) SetId(id string) {
+func (d *Data) SetId(id string) {
 	d.id = id
 }
 
-func (d *TestData) Id() string {
+func (d *Data) Id() string {
 	return d.id
 }
 
-func (d *TestData) HasChange(name string) bool {
+func (d *Data) HasChange(name string) bool {
 	_, ok := d.NewValues[name]
 	return ok
 }
 
-func (d *TestData) GetChange(name string) (interface{}, interface{}) {
+func (d *Data) GetChange(name string) (interface{}, interface{}) {
 	return d.Values[name], d.NewValues[name]
 }

@@ -5,29 +5,29 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 )
 
 func TestReadConnection(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
-	defer locked.Unlock()
+	conn := test.OpenManualConnection(exaClient)
+	defer conn.Close()
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	stmt := fmt.Sprintf("CREATE CONNECTION %s TO 'foo'", name)
-	_, err := locked.Conn.Execute(stmt)
+	_, err := conn.Conn.Execute(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	read := &internal.TestData{
+	read := &test.Data{
 		Values: map[string]interface{}{
 			"name": name,
 		},
 	}
 
-	diags := readData(read, locked.Conn)
+	diags := readData(read, conn.Conn)
 	if diags.HasError() {
 		t.Fatal("Unexpected error:", diags)
 	}

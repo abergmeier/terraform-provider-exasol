@@ -1,12 +1,12 @@
-package resources
+package schema
 
 import (
 	"flag"
 	"os"
 	"testing"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 )
 
@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 }
 
 func testRun(m *testing.M) int {
-	exaClient = internal.MustCreateTestClient()
+	exaClient = test.MustCreateClient()
 
 	return m.Run()
 }

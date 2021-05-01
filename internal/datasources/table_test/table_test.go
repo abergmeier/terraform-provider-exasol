@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/abergmeier/terraform-provider-exasol/internal/resourceprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -269,8 +270,8 @@ type expectedColumns struct {
 
 // TestAccExasolTable_basic all examples provided by Exasol.
 func TestAccExasolTable_basic(t *testing.T) {
-	locked := exaClient.Lock()
-	defer locked.Unlock()
+	conn := test.OpenManualConnectionInTest(t, exaClient)
+	defer conn.Close()
 
 	for i, v := range testDefs {
 		testDefs[i].ObjectTest.Config = fmt.Sprintf(`%s
@@ -281,12 +282,12 @@ data "exasol_table" "%s" {
 	name = "%s"
 	schema = data.exasol_physical_schema.dummy.name
 }
-`, test.HCLProviderFromConf(locked.Conn.Conf), schemaName, v.ObjectTest.ResourceName, v.ObjectTest.DbName)
+`, test.HCLProviderFromConf(conn.Conn.Conf), schemaName, v.ObjectTest.ResourceName, v.ObjectTest.DbName)
 	}
 
-	basicSetup(t, locked.Conn)
+	basicSetup(t, conn.Conn)
 
-	ps := test.NewDefaultAccProviders()
+	ps := test.NewDefaultAccProviders(resourceprovider.Provider())
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:          nil,

@@ -1,4 +1,4 @@
-package internal
+package test
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 	"github.com/grantstreetgroup/go-exasol-client"
 )
 
-func MustCreateTestConf() exasol.ConnConf {
+func MustCreateConf() exasol.ConnConf {
 	exaHost := os.Getenv("EXAHOST")
 	if exaHost == "" {
 		panic("Tests need EXAHOST to run")
@@ -32,6 +32,10 @@ func MustCreateTestConf() exasol.ConnConf {
 	}
 }
 
-func MustCreateTestClient() *exaprovider.Client {
-	return exaprovider.NewClient(MustCreateTestConf())
+func MustCreateClient() *exaprovider.Client {
+	c, err := exaprovider.NewClient(MustCreateConf(), "")
+	if err != nil {
+		panic(err)
+	}
+	return c
 }

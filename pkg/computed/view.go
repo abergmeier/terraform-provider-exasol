@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/binding"
 	"github.com/grantstreetgroup/go-exasol-client"
 )
 
@@ -19,7 +19,7 @@ type View struct {
 	Subquery  string
 }
 
-func (v *View) SetComment(d internal.Data) error {
+func (v *View) SetComment(d binding.Data) error {
 	return setComment(v.Comment, d)
 }
 

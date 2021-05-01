@@ -1,12 +1,12 @@
-package resourceprovider
+package resourceprovider_test
 
 import (
 	"flag"
 	"os"
 	"testing"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
+	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 )
 
 var (
@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 }
 
 func testRun(m *testing.M) int {
-	exaClient = internal.MustCreateTestClient()
+	exaClient = test.MustCreateClient()
 
 	return m.Run()
 }

@@ -4,7 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/binding"
+	"github.com/abergmeier/terraform-provider-exasol/internal/cached"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/computed"
 	"github.com/grantstreetgroup/go-exasol-client"
@@ -31,18 +32,17 @@ func Resource() *schema.Resource {
 				Description: "User used with connection",
 			},
 		},
-		ReadContext: read,
+		ReadContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+			return cached.ReadContext(read, ctx, d, meta)
+		},
 	}
 }
 
-func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	return readData(d, locked.Conn)
+func read(ctx context.Context, d *schema.ResourceData, conn *exaprovider.Connection) diag.Diagnostics {
+	return readData(d, conn.Conn)
 }
 
-func readData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
+func readData(d binding.Data, c *exasol.Conn) diag.Diagnostics {
 
 	err := computed.ReadConnection(d, c)
 	if err != nil {
