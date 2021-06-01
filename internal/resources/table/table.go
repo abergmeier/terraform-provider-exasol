@@ -75,10 +75,10 @@ func Resource() *schema.Resource {
 			customdiff.ForceNewIf("subquery", isReplaceFalse),
 			customdiff.ForceNewIf("like", isReplaceFalse),
 		),
-		Create:      create,
-		ReadContext: read,
-		Update:      update,
-		Delete:      delete,
+		CreateContext: create,
+		ReadContext:   read,
+		UpdateContext: update,
+		DeleteContext: delete,
 		Importer: &schema.ResourceImporter{
 			State: imp,
 		},
@@ -89,27 +89,22 @@ func isReplaceFalse(ctx context.Context, d *schema.ResourceDiff, meta interface{
 	return !d.Get("replace").(bool)
 }
 
-func create(d *schema.ResourceData, meta interface{}) error {
+func create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
-	err := createData(d, locked.Conn, false)
-	if err != nil {
-		return err
+	ra, diags := argument.ExtractRequiredArguments(d)
+	if diags.HasError() {
+		return diags
 	}
-	return locked.Conn.Commit()
+	diags = append(diags, diag.FromErr(createData(d, locked.Conn, ra, false))...)
+	if diags.HasError() {
+		return diags
+	}
+	return append(diags, diag.FromErr(locked.Conn.Commit())...)
 }
 
-func createData(d internal.Data, c *exasol.Conn, replace bool) error {
-
-	name, err := argument.Name(d)
-	if err != nil {
-		return err
-	}
-	schema, err := argument.Schema(d)
-	if err != nil {
-		return err
-	}
+func createData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments, replace bool) error {
 
 	comp := d.Get("composite")
 	like := d.Get("like")
@@ -124,12 +119,12 @@ func createData(d internal.Data, c *exasol.Conn, replace bool) error {
 		return fmt.Errorf("Only one of composite, like or subquery may be used %#v", like)
 	}
 
-	err = createDataMutate(d, c, schema, name, comp, like, subquery, replace)
+	err := createDataMutate(d, c, args.Schema, args.Name, comp, like, subquery, replace)
 	if err != nil {
 		return err
 	}
 
-	return postCreate(d, c, schema, name)
+	return postCreate(d, c, args.Schema, args.Name)
 }
 
 func postCreate(d internal.Data, c *exasol.Conn, schema, name string) error {
@@ -204,30 +199,25 @@ func createDataMutate(d internal.Data, c *exasol.Conn, schema, name string, comp
 	return err
 }
 
-func delete(d *schema.ResourceData, meta interface{}) error {
+func delete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
-	err := deleteData(d, locked.Conn)
-	if err != nil {
-		return err
+	ra, diags := argument.ExtractRequiredArguments(d)
+	if diags.HasError() {
+		return diags
 	}
-	return locked.Conn.Commit()
+	err := deleteData(d, locked.Conn, ra)
+	if err != nil {
+		return append(diags, diag.FromErr(err)...)
+	}
+	return append(diags, diag.FromErr(locked.Conn.Commit())...)
 }
 
-func deleteData(d internal.Data, c *exasol.Conn) error {
+func deleteData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) error {
 
-	name, err := argument.Name(d)
-	if err != nil {
-		return err
-	}
-	schema, err := argument.Schema(d)
-	if err != nil {
-		return err
-	}
-
-	stmt := fmt.Sprintf("DROP TABLE %s", name)
-	_, err = c.Execute(stmt, nil, schema)
+	stmt := fmt.Sprintf("DROP TABLE %s", args.Name)
+	_, err := c.Execute(stmt, nil, args.Schema)
 	if err != nil {
 		return err
 	}
@@ -309,39 +299,33 @@ func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Di
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
-	return readData(d, locked.Conn)
+	ra, diags := argument.ExtractRequiredArguments(d)
+	if diags.HasError() {
+		return diags
+	}
+	return append(diags, readData(d, locked.Conn, ra)...)
 }
 
-func readData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
-	name, err := argument.Name(d)
+func readData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) diag.Diagnostics {
+
+	tr, err := computed.ReadTable(c, args.Schema, args.Name)
 	if err != nil {
 		return diag.FromErr(err)
-	}
-	schema, err := argument.Schema(d)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	var diags diag.Diagnostics
-
-	tr, err := computed.ReadTable(c, schema, name)
-	if err != nil {
-		return append(diags, diag.FromErr(err)...)
 	}
 
 	err = tr.SetComment(d)
 	if err != nil {
-		return append(diags, diag.FromErr(err)...)
+		return diag.FromErr(err)
 	}
 
 	err = d.Set("columns", tr.Columns)
 	if err != nil {
-		return append(diags, diag.FromErr(err)...)
+		return diag.FromErr(err)
 	}
 
 	err = d.Set("column_indices", tr.ColumnIndices)
 	if err != nil {
-		return append(diags, diag.FromErr(err)...)
+		return diag.FromErr(err)
 	}
 
 	handled := false
@@ -360,63 +344,63 @@ func readData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
 		// Update composite value
 		err = d.Set("composite", tr.Composite)
 		if err != nil {
-			return append(diags, diag.FromErr(err)...)
+			return diag.FromErr(err)
 		}
 	}
 
 	err = d.Set("primary_key_indices", tr.PrimaryKeys)
 	if err != nil {
-		return append(diags, diag.FromErr(err)...)
+		return diag.FromErr(err)
 	}
 
 	err = d.Set("foreign_key_indices", tr.ForeignKeys)
 	if err != nil {
-		return append(diags, diag.FromErr(err)...)
+		return diag.FromErr(err)
 	}
 
-	d.SetId(resource.NewID(schema, name))
-	return diags
+	d.SetId(resource.NewID(args.Schema, args.Name))
+	return nil
 }
 
-func update(d *schema.ResourceData, meta interface{}) error {
+func update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
-	err := updateData(d, locked.Conn)
-	if err != nil {
-		return err
+	ra, diags := argument.ExtractRequiredArguments(d)
+	if diags.HasError() {
+		return diags
 	}
-	return locked.Conn.Commit()
+	diags = append(diags, updateData(d, locked.Conn, ra)...)
+	if diags.HasError() {
+		return diags
+	}
+	return append(diags, diag.FromErr(locked.Conn.Commit())...)
 }
 
-func updateData(d internal.Data, c *exasol.Conn) error {
-
-	schema, err := argument.Schema(d)
-	if err != nil {
-		return err
-	}
+func updateData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) diag.Diagnostics {
 
 	if d.HasChange("name") {
 		old, new := d.GetChange("name")
 
-		err := db.Rename(c, "TABLE", old.(string), new.(string), schema)
+		err := db.Rename(c, "TABLE", old.(string), new.(string), args.Schema)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
-
-		d.Set("name", new)
 	}
 
 	replaceNecessary := d.HasChange("composite") || d.HasChange("subquery") || d.HasChange("like")
 	if replaceNecessary {
-		err = createData(d, c, true)
+		err := createData(d, c, argument.RequiredArguments{
+			Schema: args.Schema,
+			Name:   d.Get("name").(string),
+		}, true)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 	} else if d.HasChange("comment") {
-		err := db.Comment(c, "TABLE", d.Get("name").(string), d.Get("comment").(string), schema)
+		err := db.Comment(c, "TABLE", d.Get("name").(string), d.Get("comment").(string), args.Schema)
 		if err != nil {
-			return err
+			return diag.FromErr(err)
 		}
 	}
 

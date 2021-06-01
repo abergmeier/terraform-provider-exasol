@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/resource"
 	"github.com/andreyvit/diff"
 )
@@ -15,29 +16,30 @@ func TestCreate(t *testing.T) {
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	createErr := &internal.TestData{
-		Values: map[string]interface{}{
-			"name":   name,
-			"schema": schemaName,
-		},
+		Values: map[string]interface{}{},
 	}
 
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 	locked.Conn.Execute(fmt.Sprintf("DROP TABLE %s", name), nil, schemaName)
 
-	err := createData(createErr, locked.Conn, false)
+	err := createData(createErr, locked.Conn, argument.RequiredArguments{
+		Schema: schemaName,
+		Name:   name,
+	}, false)
 	if err == nil {
 		t.Fatal("Expected error when createData")
 	}
 
 	create := &internal.TestData{
 		Values: map[string]interface{}{
-			"name":      name,
-			"schema":    schemaName,
 			"composite": "A VARCHAR(20),",
 		},
 	}
-	err = createData(create, locked.Conn, false)
+	err = createData(create, locked.Conn, argument.RequiredArguments{
+		Schema: schemaName,
+		Name:   name,
+	}, false)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -54,19 +56,22 @@ func TestDelete(t *testing.T) {
 	locked.Conn.Execute(fmt.Sprintf("DROP TABLE %s", name), nil, schemaName)
 
 	delete := &internal.TestData{
-		Values: map[string]interface{}{
-			"name":   name,
-			"schema": schemaName,
-		},
+		Values: map[string]interface{}{},
 	}
-	err := deleteData(delete, locked.Conn)
+	err := deleteData(delete, locked.Conn, argument.RequiredArguments{
+		Schema: schemaName,
+		Name:   name,
+	})
 	if err == nil {
 		t.Fatal("Expected error")
 	}
 
 	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (A VARCHAR(40))", name), nil, schemaName)
 
-	err = deleteData(delete, locked.Conn)
+	err = deleteData(delete, locked.Conn, argument.RequiredArguments{
+		Schema: schemaName,
+		Name:   name,
+	})
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -90,7 +95,10 @@ func TestComment(t *testing.T) {
 		},
 	}
 
-	err := updateData(upd, locked.Conn)
+	err := updateData(upd, locked.Conn, argument.RequiredArguments{
+		Schema: schemaName,
+		Name:   name,
+	})
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -169,20 +177,24 @@ func TestRename(t *testing.T) {
 		},
 	}
 
-	err := updateData(rename, locked.Conn)
+	err := updateData(rename, locked.Conn, argument.RequiredArguments{
+		Schema: schemaName,
+		Name:   newName,
+	})
 	if err != nil {
 		t.Fatal("Unknown error:", err)
 	}
 
 	read := &internal.TestData{
 		Values: map[string]interface{}{
-			"name":      newName,
-			"schema":    schemaName,
 			"composite": "Dummy",
 		},
 	}
 
-	diags := readData(read, locked.Conn)
+	diags := readData(read, locked.Conn, argument.RequiredArguments{
+		Schema: schemaName,
+		Name:   name,
+	})
 	if diags.HasError() {
 		t.Fatal("Unknown error:", err)
 	}

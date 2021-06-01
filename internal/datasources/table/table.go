@@ -49,21 +49,16 @@ func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Di
 	c := meta.(*exaprovider.Client)
 	locked := c.Lock()
 	defer locked.Unlock()
-	return readData(d, locked.Conn)
+	ra, diags := argument.ExtractRequiredArguments(d)
+	if diags.HasError() {
+		return diags
+	}
+	return readData(d, locked.Conn, ra)
 }
 
-func readData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
+func readData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) diag.Diagnostics {
 
-	name, err := argument.Name(d)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	schema, err := argument.Schema(d)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	tr, err := computed.ReadTable(c, schema, name)
+	tr, err := computed.ReadTable(c, args.Schema, args.Name)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -98,7 +93,7 @@ func readData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
 		return diag.FromErr(err)
 	}
 
-	d.SetId(resource.NewID(schema, name))
+	d.SetId(resource.NewID(args.Schema, args.Name))
 	return nil
 
 }

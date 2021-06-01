@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/andreyvit/diff"
 )
 
@@ -26,13 +27,13 @@ func TestRead(t *testing.T) {
 	}
 
 	d := &internal.TestData{
-		Values: map[string]interface{}{
-			"name":   fmt.Sprintf("%s_VIEW", name),
-			"schema": schemaName,
-		},
+		Values: map[string]interface{}{},
 	}
 
-	diags := readData(d, locked.Conn)
+	diags := readData(d, locked.Conn, argument.RequiredArguments{
+		Schema: schemaName,
+		Name:   fmt.Sprintf("%s_VIEW", name),
+	})
 	if diags.HasError() {
 		t.Fatal("Unexpected error:", diags)
 	}
