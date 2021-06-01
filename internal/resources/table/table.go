@@ -79,7 +79,6 @@ func Resource() *schema.Resource {
 		ReadContext: read,
 		Update:      update,
 		Delete:      delete,
-		Exists:      exists,
 		Importer: &schema.ResourceImporter{
 			State: imp,
 		},
@@ -235,34 +234,6 @@ func deleteData(d internal.Data, c *exasol.Conn) error {
 
 	d.SetId("")
 	return nil
-}
-
-func exists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	return existsData(d, locked.Conn)
-}
-
-func existsData(d internal.Data, c *exasol.Conn) (bool, error) {
-	name, err := argument.Name(d)
-	if err != nil {
-		return false, err
-	}
-	schema, err := argument.Schema(d)
-	if err != nil {
-		return false, err
-	}
-
-	res, err := c.FetchSlice("SELECT TABLE_OWNER FROM EXA_ALL_TABLES WHERE UPPER(TABLE_SCHEMA) = UPPER(?) AND UPPER(TABLE_NAME) = UPPER(?)", []interface{}{
-		schema,
-		name,
-	}, "SYS")
-	if err != nil {
-		return false, err
-	}
-
-	return len(res) != 0, nil
 }
 
 func imp(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {

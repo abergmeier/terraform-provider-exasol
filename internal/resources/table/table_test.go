@@ -72,41 +72,6 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestExists(t *testing.T) {
-	t.Parallel()
-
-	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
-
-	locked := exaClient.Lock()
-	defer locked.Unlock()
-
-	locked.Conn.Execute(fmt.Sprintf("DROP TABLE %s", name), nil, schemaName)
-
-	exists := &internal.TestData{
-		Values: map[string]interface{}{
-			"name":   name,
-			"schema": schemaName,
-		},
-	}
-	e, err := existsData(exists, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-	if e {
-		t.Fatal("Expected false")
-	}
-
-	locked.Conn.Execute(fmt.Sprintf("CREATE TABLE %s (A VARCHAR(40))", name), nil, schemaName)
-
-	e, err = existsData(exists, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-	if !e {
-		t.Fatal("Expected true")
-	}
-}
-
 func TestComment(t *testing.T) {
 	t.Parallel()
 

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
-	"github.com/abergmeier/terraform-provider-exasol/internal/resources/user"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -66,7 +66,7 @@ func testExistsNotByName(p *schema.Provider, actualName string) resource.TestChe
 		locked := c.Lock()
 		defer locked.Unlock()
 
-		exists, err := user.Exists(locked.Conn, actualName)
+		exists, err := exists(locked.Conn, actualName)
 		if err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func testExist(p *schema.Provider, id string) resource.TestCheckFunc {
 		locked := c.Lock()
 		defer locked.Unlock()
 
-		exists, err := user.Exists(locked.Conn, actualName)
+		exists, err := exists(locked.Conn, actualName)
 		if err != nil {
 			return err
 		}
@@ -136,4 +136,15 @@ func rootRole(state *terraform.State, id string) (*terraform.ResourceState, erro
 	}
 
 	return rs, nil
+}
+
+func exists(c internal.Conn, name string) (bool, error) {
+	res, err := c.FetchSlice("SELECT CREATED FROM EXA_ALL_USERS WHERE UPPER(USER_NAME) = UPPER(?)", []interface{}{
+		name,
+	}, "SYS")
+	if err != nil {
+		return false, err
+	}
+
+	return len(res) != 0, nil
 }

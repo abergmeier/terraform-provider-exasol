@@ -56,43 +56,6 @@ func TestDeletePhysicalSchema(t *testing.T) {
 	}
 }
 
-func TestExistsPhysicalSchema(t *testing.T) {
-	t.Parallel()
-
-	locked := exaClient.Lock()
-	defer locked.Unlock()
-
-	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
-
-	exists := &internal.TestData{
-		Values: map[string]interface{}{
-			"name": name,
-		},
-	}
-
-	deletePhysicalSchemaData(exists, locked.Conn)
-
-	e, err := existsPhysicalSchemaData(exists, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	if e {
-		t.Fatal("Expected exists to be false")
-	}
-
-	createPhysicalSchemaData(exists, locked.Conn)
-
-	e, err = existsPhysicalSchemaData(exists, locked.Conn)
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	if !e {
-		t.Fatal("Expected exists to be true")
-	}
-}
-
 func TestImportPhysicalSchema(t *testing.T) {
 	t.Parallel()
 

@@ -21,37 +21,8 @@ func Resource() *schema.Resource {
 				Description: "Name of Role",
 			},
 		},
-		Exists:      exists,
 		ReadContext: read,
 	}
-}
-
-func exists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	return existsData(d, locked.Conn)
-}
-
-func existsData(d internal.Data, c internal.Conn) (bool, error) {
-	name, err := argument.Name(d)
-	if err != nil {
-		return false, err
-	}
-
-	return Exists(c, name)
-}
-
-// Exists checks whether the Role exists
-func Exists(c internal.Conn, name string) (bool, error) {
-	res, err := c.FetchSlice("SELECT ROLE_NAME FROM EXA_ALL_ROLES WHERE UPPER(ROLE_NAME) = UPPER(?)", []interface{}{
-		name,
-	}, "SYS")
-	if err != nil {
-		return false, err
-	}
-
-	return len(res) != 0, nil
 }
 
 func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

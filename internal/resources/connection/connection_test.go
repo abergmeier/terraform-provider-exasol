@@ -94,67 +94,6 @@ func TestDeleteConnection(t *testing.T) {
 	}
 }
 
-func TestExistsConnection(t *testing.T) {
-	t.Parallel()
-	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
-
-	err := globallock.RunAndRetryRollbacks(func() error {
-		locked := exaClient.Lock()
-		defer locked.Unlock()
-
-		exists := &internal.TestData{
-			Values: map[string]interface{}{
-				"name": name,
-			},
-		}
-
-		err := deleteConnectionData(exists, locked.Conn)
-		if globallock.IsRollbackError(err) {
-			return err
-		}
-		e, err := existsData(exists, locked.Conn)
-		if err != nil {
-			if globallock.IsRollbackError(err) {
-				return err
-			}
-			t.Fatal("Unexpected error:", err)
-		}
-		if e {
-			t.Fatal("Expected exist to be false")
-		}
-
-		create := &internal.TestData{
-			Values: map[string]interface{}{
-				"name": name,
-				"to":   "endpoint",
-			},
-		}
-
-		err = createConnectionData(create, locked.Conn)
-		if err != nil {
-			if globallock.IsRollbackError(err) {
-				return err
-			}
-			t.Fatal("Unexpected error:", err)
-		}
-
-		e, err = existsData(exists, locked.Conn)
-		if err != nil {
-			if globallock.IsRollbackError(err) {
-				return err
-			}
-			t.Fatal("Unexpected error:", err)
-		}
-		if !e {
-			t.Fatal("Expected exist to be true")
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestReadConnection(t *testing.T) {
 	t.Parallel()
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)

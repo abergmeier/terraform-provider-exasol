@@ -49,7 +49,6 @@ func Resource() *schema.Resource {
 		ReadContext:   readConnection,
 		UpdateContext: updateConnection,
 		DeleteContext: deleteConnection,
-		Exists:        exists,
 		Importer: &schema.ResourceImporter{
 			StateContext: importConnection,
 		},
@@ -249,22 +248,6 @@ func Exists(c internal.Conn, name string) (bool, error) {
 	}
 
 	return len(rows) > 0, nil
-}
-
-func exists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	return existsData(d, locked.Conn)
-}
-
-func existsData(d internal.Data, c internal.Conn) (bool, error) {
-	name, err := argument.Name(d)
-	if err != nil {
-		return false, err
-	}
-
-	return Exists(c, name)
 }
 
 func resourceTo(d internal.Data) (string, error) {

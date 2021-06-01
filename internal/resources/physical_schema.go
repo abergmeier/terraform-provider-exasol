@@ -28,7 +28,6 @@ func PhysicalSchema() *schema.Resource {
 		ReadContext: readPhysicalSchema,
 		Update:      updatePhysicalSchema,
 		Delete:      deletePhysicalSchema,
-		Exists:      existsPhysicalSchema,
 		Importer: &schema.ResourceImporter{
 			State: importPhysicalSchema,
 		},
@@ -85,25 +84,6 @@ func deletePhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
 
 	d.SetId("")
 	return nil
-}
-
-func existsPhysicalSchema(d *schema.ResourceData, meta interface{}) (bool, error) {
-	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	return existsPhysicalSchemaData(d, locked.Conn)
-}
-
-func existsPhysicalSchemaData(d internal.Data, c *exasol.Conn) (bool, error) {
-
-	result, err := c.FetchSlice("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?)", []interface{}{
-		d.Id(),
-	}, "SYS")
-	if err != nil {
-		return false, err
-	}
-
-	return len(result) == 1, nil
 }
 
 func importPhysicalSchema(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {

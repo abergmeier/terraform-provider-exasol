@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
-	"github.com/abergmeier/terraform-provider-exasol/internal/datasources/role"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
@@ -28,7 +27,6 @@ func Resource() *schema.Resource {
 		Create:        create,
 		UpdateContext: update,
 		Delete:        delete,
-		Exists:        exists,
 		Importer: &schema.ResourceImporter{
 			StateContext: imp,
 		},
@@ -89,22 +87,6 @@ func deleteData(d internal.Data, c *exasol.Conn) error {
 
 	d.SetId("")
 	return nil
-}
-
-func exists(d *schema.ResourceData, meta interface{}) (bool, error) {
-	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
-	defer locked.Unlock()
-	return existsData(d, locked.Conn)
-}
-
-func existsData(d internal.Data, c internal.Conn) (bool, error) {
-	name, err := argument.Name(d)
-	if err != nil {
-		return false, err
-	}
-
-	return role.Exists(c, name)
 }
 
 func imp(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	drole "github.com/abergmeier/terraform-provider-exasol/internal/datasources/role"
+	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
@@ -99,6 +99,18 @@ func TestAccExasolRole_import(t *testing.T) {
 	})
 }
 
+// exists checks whether the Role exists
+func exists(c internal.Conn, name string) (bool, error) {
+	res, err := c.FetchSlice("SELECT ROLE_NAME FROM EXA_ALL_ROLES WHERE UPPER(ROLE_NAME) = UPPER(?)", []interface{}{
+		name,
+	}, "SYS")
+	if err != nil {
+		return false, err
+	}
+
+	return len(res) != 0, nil
+}
+
 func testExistsNotByName(p *schema.Provider, actualName string) resource.TestCheckFunc {
 
 	return func(state *terraform.State) error {
@@ -107,7 +119,7 @@ func testExistsNotByName(p *schema.Provider, actualName string) resource.TestChe
 		locked := c.Lock()
 		defer locked.Unlock()
 
-		exists, err := drole.Exists(locked.Conn, actualName)
+		exists, err := exists(locked.Conn, actualName)
 		if err != nil {
 			return err
 		}
@@ -138,7 +150,7 @@ func testExist(p *schema.Provider, id string) resource.TestCheckFunc {
 		locked := c.Lock()
 		defer locked.Unlock()
 
-		exists, err := drole.Exists(locked.Conn, actualName)
+		exists, err := exists(locked.Conn, actualName)
 		if err != nil {
 			return err
 		}
