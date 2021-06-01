@@ -30,3 +30,14 @@ func Schema(d internal.Data) (string, error) {
 	}
 	return name, nil
 }
+
+func GetOkAsString(d internal.Data, name string) (string, bool) {
+	i, ok := d.GetOk(name)
+	if !ok {
+		return "", false
+	}
+	if i == nil {
+		return "", true
+	}
+	return i.(string), true
+}
