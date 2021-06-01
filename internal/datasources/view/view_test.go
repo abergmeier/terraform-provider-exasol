@@ -7,6 +7,7 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/andreyvit/diff"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestRead(t *testing.T) {
@@ -38,14 +39,22 @@ func TestRead(t *testing.T) {
 		t.Fatal("Unexpected error:", diags)
 	}
 
-	comp := d.Get("composite").(string)
-	expectedComposite := `VA COMMENT IS 'FOO',
-VB,
-VC,
-`
-	if comp != expectedComposite {
-		lines := diff.LineDiff(comp, expectedComposite)
-		t.Fatalf("Unexpected composite:\n%s", lines)
+	comp := d.Get("column").([]interface{})
+	expectedComposite := []interface{}{
+		map[string]interface{}{
+			"name":    "VA",
+			"comment": "FOO",
+		},
+		map[string]interface{}{
+			"name": "VB",
+		},
+		map[string]interface{}{
+			"name": "VC",
+		},
+	}
+
+	if cmp.Diff(comp, expectedComposite) != "" {
+		t.Fatalf("Unexpected columns:\n%s", cmp.Diff(comp, expectedComposite))
 	}
 
 	sq := d.Get("subquery").(string)

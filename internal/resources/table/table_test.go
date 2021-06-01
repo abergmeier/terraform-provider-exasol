@@ -156,17 +156,17 @@ C VARCHAR(6) UTF8 NOT NULL,
 func TestRename(t *testing.T) {
 	t.Parallel()
 
-	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
+	oldName := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	locked := exaClient.Lock()
 	defer locked.Unlock()
 
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (A VARCHAR(10) COMMENT IS 'Foo')", name), nil, schemaName)
+	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (A VARCHAR(10) COMMENT IS 'Foo')", oldName), nil, schemaName)
 
-	newName := name + "_SHINY"
+	newName := oldName + "_SHINY"
 	rename := &internal.TestData{
 		Values: map[string]interface{}{
-			"name":      name,
+			"name":      oldName,
 			"schema":    schemaName,
 			"composite": "A VARCHAR(10) COMMENT IS 'Foo'",
 		},
@@ -187,13 +187,13 @@ func TestRename(t *testing.T) {
 
 	read := &internal.TestData{
 		Values: map[string]interface{}{
-			"composite": "Dummy",
+			"composite": "A VARCHAR(10) COMMENT IS 'Foo'",
 		},
 	}
 
 	diags := readData(read, locked.Conn, argument.RequiredArguments{
 		Schema: schemaName,
-		Name:   name,
+		Name:   newName,
 	})
 	if diags.HasError() {
 		t.Fatal("Unknown error:", err)

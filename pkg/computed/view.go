@@ -1,26 +1,52 @@
 package computed
 
 import (
+	"bufio"
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/grantstreetgroup/go-exasol-client"
 )
 
 var (
-	reg = regexp.MustCompile(`CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?AS\s+(.*)(?:\s+COMMENT\s+IS.*)?`)
+	columnReg   = regexp.MustCompile(`CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?\s+\((.*)\)\s+AS`)
+	subqueryReg = regexp.MustCompile(`CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?AS\s+(.*)(?:\s+COMMENT\s+IS.*)?`)
 )
 
 type View struct {
-	Comment   string
-	Composite string
-	Subquery  string
+	Comment  string
+	Columns  []ViewColumn
+	Subquery string
+}
+
+type ViewColumn struct {
+	Name    string
+	Comment string
 }
 
 func (v *View) SetComment(d internal.Data) error {
 	return setComment(v.Comment, d)
+}
+
+func (v *View) SetColumns(d internal.Data) error {
+	var columns []interface{}
+	for _, v := range v.Columns {
+		if v.Comment == "" {
+			columns = append(columns, map[string]interface{}{
+				"name": v.Name,
+			})
+		} else {
+			columns = append(columns, map[string]interface{}{
+				"name":    v.Name,
+				"comment": v.Comment,
+			})
+		}
+	}
+	return d.Set("column", columns)
 }
 
 func ReadView(c *exasol.Conn, schema, name string) (*View, error) {
@@ -30,11 +56,11 @@ func ReadView(c *exasol.Conn, schema, name string) (*View, error) {
 		name,
 	}, "SYS")
 	if err != nil {
-		return nil, fmt.Errorf("Selecting View Metadata for %s.%s failed: %s", schema, name, err)
+		return nil, fmt.Errorf("selecting View Metadata for %s.%s failed: %s", schema, name, err)
 	}
 
 	if len(res) == 0 {
-		return nil, fmt.Errorf("Selecting View Metadata for %s.%s resulted in no result", schema, name)
+		return nil, fmt.Errorf("selecting View Metadata for %s.%s resulted in no result", schema, name)
 	}
 
 	row := res[0]
@@ -43,7 +69,7 @@ func ReadView(c *exasol.Conn, schema, name string) (*View, error) {
 		return nil, err
 	}
 
-	composite, err := readViewComposite(c, schema, name)
+	columns, err := readViewColumnsByRow(row)
 	if err != nil {
 		return nil, err
 	}
@@ -54,9 +80,9 @@ func ReadView(c *exasol.Conn, schema, name string) (*View, error) {
 	}
 
 	return &View{
-		Comment:   comment,
-		Composite: composite,
-		Subquery:  subquery,
+		Comment:  comment,
+		Columns:  columns,
+		Subquery: subquery,
 	}, nil
 }
 
@@ -69,46 +95,105 @@ func readViewComment(row []interface{}) (string, error) {
 	return row[0].(string), nil
 }
 
-func readViewComposite(c *exasol.Conn, schema, view string) (string, error) {
-	stmt := `SELECT COLUMN_NAME, COLUMN_COMMENT
-FROM EXA_ALL_COLUMNS
-WHERE UPPER(COLUMN_SCHEMA) = UPPER(?) AND UPPER(COLUMN_TABLE) = UPPER(?)
-ORDER BY COLUMN_ORDINAL_POSITION`
-	res, err := c.FetchSlice(stmt, []interface{}{
-		schema,
-		view,
-	})
-	if err != nil {
-		return "", fmt.Errorf("Selecting VIEW Columns for %s.%s failed: %s", schema, view, err)
-	}
+func scanComma(data []byte, atEOF bool) (advance int, token []byte, err error) {
 
-	b := &strings.Builder{}
-	for _, row := range res {
-		b.WriteString(row[0].(string))
-		if row[1] == nil {
-			b.WriteString(",\n")
-			continue
-		}
-		comment := row[1].(string)
-		if comment == "" {
-			b.WriteString(",\n")
-		} else {
-			fmt.Fprintf(b, " COMMENT IS '%s',\n", comment)
+	// Skip leading spaces.
+	start := 0
+
+	for width := 0; start < len(data); start += width {
+		var r rune
+		r, width = utf8.DecodeRune(data[start:])
+		if !unicode.IsSpace(r) {
+			break
 		}
 	}
 
-	return b.String(), nil
+	// Scan until comma, marking end of part.
+
+	for width, i := 0, start; i < len(data); i += width {
+		var r rune
+		r, width = utf8.DecodeRune(data[i:])
+		if r == rune(',') {
+			return i + width, data[start:i], nil
+		}
+	}
+
+	// If we're at EOF, we have a final, non-empty, non-terminated part. Return it.
+
+	if atEOF && len(data) > start {
+		return len(data), data[start:], nil
+	}
+
+	// Request more data.
+	return start, nil, nil
+
+}
+
+func readViewColumnsByRow(row []interface{}) ([]ViewColumn, error) {
+	text := row[1].(string)
+	return readViewColumnsByString(text)
+}
+
+func readViewColumnsByString(text string) ([]ViewColumn, error) {
+	submatch := columnReg.FindSubmatch([]byte(text))
+	if len(submatch) == 0 {
+		return nil, nil
+	}
+	if len(submatch) != 2 {
+		return nil, fmt.Errorf("extracting columns failed: %s", text)
+	}
+
+	return parseColumnsString(string(submatch[1]))
+}
+
+func parseColumnsString(text string) ([]ViewColumn, error) {
+
+	columnsText := text
+	columns := []ViewColumn{}
+
+	scanner := bufio.NewScanner(strings.NewReader(columnsText))
+	split := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		advance, token, err = scanComma(data, atEOF)
+		return
+	}
+	scanner.Split(split)
+	for scanner.Scan() {
+		columnText := scanner.Text()
+		columns = append(columns, scanColumn(columnText))
+	}
+
+	return columns, nil
+}
+
+func scanColumn(text string) ViewColumn {
+
+	scanner := bufio.NewScanner(strings.NewReader(text))
+	scanner.Split(bufio.ScanWords)
+	scanner.Scan()
+	columnName := scanner.Text()
+	if !scanner.Scan() {
+		return ViewColumn{
+			Name: columnName,
+		}
+	}
+
+	scanner.Scan()
+	scanner.Scan()
+	return ViewColumn{
+		Name:    columnName,
+		Comment: strings.Trim(scanner.Text(), "'"),
+	}
 }
 
 func readViewSubquery(row []interface{}) (string, error) {
 	text := row[1].(string)
 
-	submatch := reg.FindSubmatch([]byte(text))
+	submatch := subqueryReg.FindSubmatch([]byte(text))
 	if len(submatch) == 0 {
-		return "", fmt.Errorf("Regex matching Views CREATE text failed: %s", text)
+		return "", fmt.Errorf("regex matching Views CREATE text failed: %s", text)
 	}
 	if len(submatch) != 2 {
-		return "", fmt.Errorf("Extracting subquery failed: %s", text)
+		return "", fmt.Errorf("extracting subquery failed: %s", text)
 	}
 	return string(submatch[1]), nil
 }

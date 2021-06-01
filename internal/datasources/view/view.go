@@ -26,10 +26,10 @@ func Resource() *schema.Resource {
 				Required:    true,
 				Description: "Name of Schema that View is in",
 			},
-			"composite": {
+			"column": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "Composite which might be used to create View columns",
+				Description: "Column which might be used to create View columns",
 			},
 			"subquery": {
 				Type:        schema.TypeString,
@@ -69,7 +69,7 @@ func readData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) 
 		return diag.FromErr(err)
 	}
 
-	err = d.Set("composite", vr.Composite)
+	err = vr.SetColumns(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}

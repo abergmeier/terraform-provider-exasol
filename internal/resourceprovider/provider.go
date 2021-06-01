@@ -15,6 +15,7 @@ import (
 	rrole "github.com/abergmeier/terraform-provider-exasol/internal/resources/role"
 	rtable "github.com/abergmeier/terraform-provider-exasol/internal/resources/table"
 	ruser "github.com/abergmeier/terraform-provider-exasol/internal/resources/user"
+	rview "github.com/abergmeier/terraform-provider-exasol/internal/resources/view"
 	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -35,6 +36,7 @@ func Provider() *schema.Provider {
 			"exasol_role":            rrole.Resource(),
 			"exasol_table":           rtable.Resource(),
 			"exasol_user":            ruser.Resource(),
+			"exasol_view":            rview.Resource(),
 		},
 		Schema: map[string]*schema.Schema{
 			"username": {
