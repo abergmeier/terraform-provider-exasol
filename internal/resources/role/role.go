@@ -107,7 +107,7 @@ func imp(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*sche
 func importData(d internal.Data, c *exasol.Conn) error {
 	name := d.Id()
 	if name == "" {
-		return errors.New("Import expects id to be set")
+		return errors.New("import expects id to be set")
 	}
 	name = strings.ToUpper(name)
 	err := d.Set("name", name)

@@ -92,7 +92,7 @@ func createData(d internal.Data, c *exasol.Conn) error {
 	} else if ldap != "" {
 		stmt = fmt.Sprintf(`CREATE USER %s IDENTIFIED AT LDAP AS '%s'`, name, password)
 	} else {
-		return errors.New("No identification found")
+		return errors.New("no identification found")
 	}
 
 	_, err = c.Execute(stmt)
@@ -151,7 +151,7 @@ func imp(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*sche
 func importData(d internal.Data, c internal.Conn) error {
 	name := d.Id()
 	if name == "" {
-		return errors.New("Import expects id to be set")
+		return errors.New("import expects id to be set")
 	}
 	err := d.Set("name", name)
 	if err != nil {
@@ -160,7 +160,7 @@ func importData(d internal.Data, c internal.Conn) error {
 
 	err = readData(d, c)
 	if errors.Is(err, db.ErrorNamedObjectNotFound) {
-		return fmt.Errorf("Could not find User %s", name)
+		return fmt.Errorf("could not find User %s", name)
 	}
 	return err
 }

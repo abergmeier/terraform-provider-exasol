@@ -72,7 +72,7 @@ func readConnectionData(d internal.Data, c internal.Conn) error {
 
 	err := computed.ReadConnection(d, c)
 	if errors.Is(err, argument.ErrorEmptyName) {
-		return fmt.Errorf("Empty name not allowed for Connection (id: %s)", d.Id())
+		return fmt.Errorf("empty name not allowed for Connection (id: %s)", d.Id())
 	}
 	return err
 }
@@ -173,7 +173,7 @@ func importConnection(ctx context.Context, d *schema.ResourceData, meta interfac
 func importConnectionData(d internal.Data, c internal.Conn) error {
 	name := d.Id()
 	if name == "" {
-		return errors.New("Import expects id to be set")
+		return errors.New("import expects id to be set")
 	}
 	err := d.Set("name", name)
 	if err != nil {
@@ -253,7 +253,7 @@ func Exists(c internal.Conn, name string) (bool, error) {
 func resourceTo(d internal.Data) (string, error) {
 	to := d.Get("to").(string)
 	if to == "" {
-		return "", fmt.Errorf("Empty attribute `to` for `%s`", d)
+		return "", fmt.Errorf("empty attribute `to` for `%s`", d)
 	}
 	return to, nil
 }
