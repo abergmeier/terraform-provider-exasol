@@ -309,7 +309,7 @@ func update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.
 func updateData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) diag.Diagnostics {
 
 	var diags diag.Diagnostics
-	replaceNecessary := d.HasChange("subquery") || d.HasChange("comment")
+	replaceNecessary := d.HasChange("column") || d.HasChange("comment") || d.HasChange("subquery")
 	if replaceNecessary {
 		diags = createData(d, c, RequiredCreateArguments{
 			RequiredArguments: args,
