@@ -6,6 +6,7 @@ CANONICAL_SCRIPT=$(readlink -e "$0")
 SCRIPT_DIR=$(dirname "${CANONICAL_SCRIPT}")
 ROOT_DIR=$(dirname "${SCRIPT_DIR}")
 
+export EXAHOST=${EXAHOST:-127.0.0.1}
 (
     cd "${ROOT_DIR}"
     #TF_LOG=trace
