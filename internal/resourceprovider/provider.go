@@ -50,10 +50,17 @@ func Provider() *schema.Provider {
 				Sensitive:   true,
 				DefaultFunc: schema.EnvDefaultFunc("EXAPWD", nil),
 			},
+			"host": {
+				Type:         schema.TypeString,
+				Required:     false,
+				DefaultFunc:  schema.EnvDefaultFunc("EXAHOST", nil),
+				ExactlyOneOf: []string{"host", "ip"},
+			},
 			"ip": {
-				Type:        schema.TypeString,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("EXAHOST", nil),
+				Type:         schema.TypeString,
+				Required:     false,
+				Deprecated:   "Attribute ip is deprecated. Use host instead.",
+				ExactlyOneOf: []string{"host", "ip"},
 			},
 			"port": {
 				Type:     schema.TypeInt,
@@ -78,8 +85,13 @@ func Provider() *schema.Provider {
 
 func providerConfigure(d internal.Data) (interface{}, error) {
 
+	host := d.Get("ip")
+	if host == nil {
+		host = d.Get("host")
+	}
+
 	conf := exasol.ConnConf{
-		Host:     d.Get("ip").(string),
+		Host:     host.(string),
 		Port:     uint16(d.Get("port").(int)),
 		Username: d.Get("username").(string),
 		Password: d.Get("password").(string),
