@@ -269,7 +269,10 @@ func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Di
 func readData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) diag.Diagnostics {
 
 	tr, err := computed.ReadView(c, args.Schema, args.Name)
-	if err != nil {
+	if errors.Is(err, computed.ReadViewNoResultError) {
+		d.SetId("")
+		return nil
+	} else if err != nil {
 		return diag.FromErr(err)
 	}
 

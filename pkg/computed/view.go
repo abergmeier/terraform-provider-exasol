@@ -13,9 +13,13 @@ import (
 )
 
 var (
-	columnReg   = regexp.MustCompile(`CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?\s+\((.*)\)\s+AS`)
-	subqueryReg = regexp.MustCompile(`CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?AS\s+(.*)(?:\s+COMMENT\s+IS.*)?`)
+	columnReg             = regexp.MustCompile(`CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?\s+\((.*)\)\s+AS`)
+	subqueryReg           = regexp.MustCompile(`CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?AS\s+(.*)(?:\s+COMMENT\s+IS.*)?`)
+	ReadViewNoResultError = &readViewNoResultError{}
 )
+
+type readViewNoResultError struct {
+}
 
 type View struct {
 	Comment  string
@@ -26,6 +30,10 @@ type View struct {
 type ViewColumn struct {
 	Name    string
 	Comment string
+}
+
+func (err *readViewNoResultError) Error() string {
+	return ""
 }
 
 func (v *View) SetComment(d internal.Data) error {
@@ -60,7 +68,7 @@ func ReadView(c *exasol.Conn, schema, name string) (*View, error) {
 	}
 
 	if len(res) == 0 {
-		return nil, fmt.Errorf("selecting View Metadata for %s.%s resulted in no result", schema, name)
+		return nil, fmt.Errorf("selecting View Metadata for %s.%s resulted in no result%w", schema, name, ReadViewNoResultError)
 	}
 
 	row := res[0]
