@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/statements"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/andreyvit/diff"
 )
@@ -265,5 +266,43 @@ func TestUpdate(t *testing.T) {
 	text = res[0][0].(string)
 	if text == fmt.Sprintf("CREATE OR REPLACE VIEW %s AS SELECT COLUMN_SCHEMA FROM SYS.EXA_ALL_COLUMNS", name) {
 		t.Fatal("Unexpected text:", text)
+	}
+}
+
+func TestUpdateEdgeCase(t *testing.T) {
+	t.Parallel()
+
+	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
+
+	locked := exaClient.Lock()
+	defer locked.Unlock()
+	locked.Conn.Execute(fmt.Sprintf("DROP VIEW %s", name), nil, schemaName)
+
+	create := Resource().TestResourceData()
+
+	args := argument.RequiredArguments{
+		Schema: schemaName,
+		Name:   name,
+	}
+	diags := createData(create, locked.Conn, RequiredCreateArguments{
+		RequiredArguments: args,
+		subquery:          "SELECT COLUMN_SCHEMA FROM SYS.EXA_ALL_COLUMNS",
+	}, false)
+	if diags.HasError() {
+		t.Fatal("Unexpected error:", diags)
+	}
+
+	dv := statements.DropView{
+		Schema: args.Schema,
+		Name:   args.Name,
+	}
+	err := dv.Execute(locked.Conn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	diags = readData(create, locked.Conn, args)
+	if diags.HasError() {
+		t.Fatal("Unexpected error:", diags)
 	}
 }
