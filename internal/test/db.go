@@ -1,23 +1,25 @@
 package test
 
 import (
+	"database/sql"
 	"testing"
-
-	"github.com/abergmeier/terraform-provider-exasol/internal"
 )
 
-func Commit(t *testing.T, c internal.Conn) {
-	err := c.Commit()
+func Commit(t *testing.T, tx *sql.Tx) {
+	err := tx.Commit()
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func Execute(t *testing.T, c internal.Conn, stmt string) (rowsAffected int64) {
-	var err error
-	rowsAffected, err = c.Execute(stmt)
+func Execute(t *testing.T, tx *sql.Tx, stmt string) (rowsAffected int64) {
+	r, err := tx.Exec(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return rowsAffected
+	rowsAffected, err = r.RowsAffected()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return
 }

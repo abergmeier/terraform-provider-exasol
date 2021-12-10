@@ -7,12 +7,12 @@ import (
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
-	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/exasol/exasol-driver-go"
 )
 
 var (
 	exaClient *exaprovider.Client
-	exaConf   exasol.ConnConf
+	exaConf   *exasol.DSNConfig
 )
 
 func init() {

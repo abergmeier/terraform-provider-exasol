@@ -1,10 +1,11 @@
 package user_test
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
@@ -63,10 +64,10 @@ func testExistsNotByName(p *schema.Provider, actualName string) resource.TestChe
 	return func(state *terraform.State) error {
 
 		c := p.Meta().(*exaprovider.Client)
-		locked := c.Lock()
+		locked := c.Lock(context.TODO())
 		defer locked.Unlock()
 
-		exists, err := exists(locked.Conn, actualName)
+		exists, err := exists(context.TODO(), locked.Tx, actualName)
 		if err != nil {
 			return err
 		}
@@ -94,10 +95,10 @@ func testExist(p *schema.Provider, id string) resource.TestCheckFunc {
 		}
 
 		c := p.Meta().(*exaprovider.Client)
-		locked := c.Lock()
+		locked := c.Lock(context.TODO())
 		defer locked.Unlock()
 
-		exists, err := exists(locked.Conn, actualName)
+		exists, err := exists(context.TODO(), locked.Tx, actualName)
 		if err != nil {
 			return err
 		}
@@ -138,13 +139,10 @@ func rootRole(state *terraform.State, id string) (*terraform.ResourceState, erro
 	return rs, nil
 }
 
-func exists(c internal.Conn, name string) (bool, error) {
-	res, err := c.FetchSlice("SELECT CREATED FROM EXA_ALL_USERS WHERE UPPER(USER_NAME) = UPPER(?)", []interface{}{
-		name,
-	}, "SYS")
+func exists(ctx context.Context, tx *sql.Tx, name string) (bool, error) {
+	r, err := tx.QueryContext(ctx, "SELECT CREATED FROM SYS.EXA_ALL_USERS WHERE UPPER(USER_NAME) = UPPER(?)", name)
 	if err != nil {
 		return false, err
 	}
-
-	return len(res) != 0, nil
+	return r.Next(), nil
 }

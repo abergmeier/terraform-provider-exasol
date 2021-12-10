@@ -1,26 +1,26 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
-
-	"github.com/grantstreetgroup/go-exasol-client"
 )
 
 // Rename changes the name on the Database
-func Rename(c *exasol.Conn, t, old, new, schema string) error {
+func Rename(tx *sql.Tx, t, old, new, schema string) error {
 
-	stmt := fmt.Sprintf("RENAME %s %s TO %s", t, old, new)
 	var err error
+	var stmt string
 	if schema == "" {
-		_, err = c.Execute(stmt)
+		stmt = fmt.Sprintf("RENAME %s %s TO %s", t, old, new)
 	} else {
-		_, err = c.Execute(stmt, nil, schema)
+		stmt = fmt.Sprintf("RENAME %s %s.%s TO %s.%s", t, schema, old, schema, new)
 	}
+	_, err = tx.Exec(stmt)
 	return err
 }
 
 // RenameGlobal changes the global name on the Database
-func RenameGlobal(c *exasol.Conn, t, old, new string) error {
+func RenameGlobal(tx *sql.Tx, t, old, new string) error {
 
-	return Rename(c, t, old, new, "")
+	return Rename(tx, t, old, new, "")
 }

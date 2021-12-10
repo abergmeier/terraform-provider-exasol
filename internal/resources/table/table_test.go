@@ -1,10 +1,12 @@
 package table
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/resource"
 	"github.com/andreyvit/diff"
@@ -19,11 +21,11 @@ func TestCreate(t *testing.T) {
 		Values: map[string]interface{}{},
 	}
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
-	locked.Conn.Execute(fmt.Sprintf("DROP TABLE %s", name), nil, schemaName)
+	locked.Tx.Exec(fmt.Sprintf("DROP TABLE %s.%s", schemaName, name))
 
-	err := createData(createErr, locked.Conn, argument.RequiredArguments{
+	err := createData(context.TODO(), createErr, locked.Tx, argument.RequiredArguments{
 		Schema: schemaName,
 		Name:   name,
 	}, false)
@@ -36,7 +38,7 @@ func TestCreate(t *testing.T) {
 			"composite": "A VARCHAR(20),",
 		},
 	}
-	err = createData(create, locked.Conn, argument.RequiredArguments{
+	err = createData(context.TODO(), create, locked.Tx, argument.RequiredArguments{
 		Schema: schemaName,
 		Name:   name,
 	}, false)
@@ -50,15 +52,15 @@ func TestDelete(t *testing.T) {
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
-	locked.Conn.Execute(fmt.Sprintf("DROP TABLE %s", name), nil, schemaName)
+	locked.Tx.Exec(fmt.Sprintf("DROP TABLE %s.%s", schemaName, name))
 
 	delete := &internal.TestData{
 		Values: map[string]interface{}{},
 	}
-	err := deleteData(delete, locked.Conn, argument.RequiredArguments{
+	err := deleteData(delete, locked.Tx, argument.RequiredArguments{
 		Schema: schemaName,
 		Name:   name,
 	})
@@ -66,9 +68,9 @@ func TestDelete(t *testing.T) {
 		t.Fatal("Expected error")
 	}
 
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (A VARCHAR(40))", name), nil, schemaName)
+	locked.Tx.Exec(fmt.Sprintf("CREATE OR REPLACE TABLE %s.%s (A VARCHAR(40))", schemaName, name))
 
-	err = deleteData(delete, locked.Conn, argument.RequiredArguments{
+	err = deleteData(delete, locked.Tx, argument.RequiredArguments{
 		Schema: schemaName,
 		Name:   name,
 	})
@@ -82,10 +84,10 @@ func TestComment(t *testing.T) {
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (B VARCHAR(5), C VARCHAR(6) NOT NULL)", name), nil, schemaName)
+	locked.Tx.Exec(fmt.Sprintf("CREATE OR REPLACE TABLE %s.%s (B VARCHAR(5), C VARCHAR(6) NOT NULL)", schemaName, name))
 
 	upd := &internal.TestData{
 		Values: map[string]interface{}{
@@ -95,7 +97,7 @@ func TestComment(t *testing.T) {
 		},
 	}
 
-	err := updateData(upd, locked.Conn, argument.RequiredArguments{
+	err := updateData(context.TODO(), upd, locked.Tx, argument.RequiredArguments{
 		Schema: schemaName,
 		Name:   name,
 	})
@@ -109,10 +111,10 @@ func TestImport(t *testing.T) {
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (B VARCHAR(5), C VARCHAR(6) NOT NULL)", name), nil, schemaName)
+	locked.Tx.Exec(fmt.Sprintf("CREATE OR REPLACE TABLE %s.%s (B VARCHAR(5), C VARCHAR(6) NOT NULL)", schemaName, name))
 
 	imp := &internal.TestData{
 		Values: map[string]interface{}{
@@ -122,7 +124,7 @@ func TestImport(t *testing.T) {
 	}
 	imp.SetId(resource.NewID(schemaName, name))
 
-	err := importData(imp, locked.Conn)
+	err := importData(context.TODO(), imp, locked.Tx)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -136,7 +138,7 @@ func TestImport(t *testing.T) {
 	}
 	imp.SetId(name)
 
-	err = importData(imp, locked.Conn)
+	err = importData(context.TODO(), imp, locked.Tx)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -158,10 +160,10 @@ func TestRename(t *testing.T) {
 
 	oldName := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (A VARCHAR(10) COMMENT IS 'Foo')", oldName), nil, schemaName)
+	locked.Tx.Exec(fmt.Sprintf("CREATE OR REPLACE TABLE %s.%s (A VARCHAR(10) COMMENT IS 'Foo')", schemaName, oldName))
 
 	newName := oldName + "_SHINY"
 	rename := &internal.TestData{
@@ -177,7 +179,7 @@ func TestRename(t *testing.T) {
 		},
 	}
 
-	err := updateData(rename, locked.Conn, argument.RequiredArguments{
+	err := updateData(context.TODO(), rename, locked.Tx, argument.RequiredArguments{
 		Schema: schemaName,
 		Name:   newName,
 	})
@@ -191,7 +193,7 @@ func TestRename(t *testing.T) {
 		},
 	}
 
-	diags := readData(read, locked.Conn, argument.RequiredArguments{
+	diags := readData(context.TODO(), read, locked.Tx, argument.RequiredArguments{
 		Schema: schemaName,
 		Name:   newName,
 	})
@@ -212,10 +214,10 @@ func TestImportConstraint(t *testing.T) {
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE TABLE %s (A VARCHAR(10), B VARCHAR(20), CONSTRAINT PK PRIMARY KEY (B), DISTRIBUTE BY A)", name), nil, schemaName)
+	locked.Tx.Exec(fmt.Sprintf("CREATE OR REPLACE TABLE %s.%s (A VARCHAR(10), B VARCHAR(20), CONSTRAINT PK PRIMARY KEY (B), DISTRIBUTE BY A)", schemaName, name))
 
 	imp := &internal.TestData{
 		Values: map[string]interface{}{
@@ -226,7 +228,7 @@ func TestImportConstraint(t *testing.T) {
 	}
 	imp.SetId(resource.NewID(schemaName, name))
 
-	err := importData(imp, locked.Conn)
+	err := importData(context.TODO(), imp, locked.Tx)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}

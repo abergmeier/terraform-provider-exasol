@@ -1,11 +1,12 @@
 package role_test
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
@@ -60,15 +61,15 @@ func TestAccExasolRole_import(t *testing.T) {
 
 	dbName := fmt.Sprintf("%s_%s", t.Name(), roleSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 	tryDeleteRole := func() {
 		stmt := fmt.Sprintf(`DROP ROLE %s`, dbName)
-		_, err := locked.Conn.Execute(stmt)
+		_, err := locked.Tx.Exec(stmt)
 		if err != nil {
 			return
 		}
-		locked.Conn.Commit()
+		locked.Tx.Commit()
 	}
 	defer tryDeleteRole()
 
@@ -100,15 +101,13 @@ func TestAccExasolRole_import(t *testing.T) {
 }
 
 // exists checks whether the Role exists
-func exists(c internal.Conn, name string) (bool, error) {
-	res, err := c.FetchSlice("SELECT ROLE_NAME FROM EXA_ALL_ROLES WHERE UPPER(ROLE_NAME) = UPPER(?)", []interface{}{
-		name,
-	}, "SYS")
+func exists(ctx context.Context, tx *sql.Tx, name string) (bool, error) {
+	r, err := tx.QueryContext(ctx, "SELECT ROLE_NAME FROM SYS.EXA_ALL_ROLES WHERE UPPER(ROLE_NAME) = UPPER(?)", name)
 	if err != nil {
 		return false, err
 	}
 
-	return len(res) != 0, nil
+	return r.Next(), nil
 }
 
 func testExistsNotByName(p *schema.Provider, actualName string) resource.TestCheckFunc {
@@ -116,10 +115,10 @@ func testExistsNotByName(p *schema.Provider, actualName string) resource.TestChe
 	return func(state *terraform.State) error {
 
 		c := p.Meta().(*exaprovider.Client)
-		locked := c.Lock()
+		locked := c.Lock(context.TODO())
 		defer locked.Unlock()
 
-		exists, err := exists(locked.Conn, actualName)
+		exists, err := exists(context.TODO(), locked.Tx, actualName)
 		if err != nil {
 			return err
 		}
@@ -147,10 +146,10 @@ func testExist(p *schema.Provider, id string) resource.TestCheckFunc {
 		}
 
 		c := p.Meta().(*exaprovider.Client)
-		locked := c.Lock()
+		locked := c.Lock(context.TODO())
 		defer locked.Unlock()
 
-		exists, err := exists(locked.Conn, actualName)
+		exists, err := exists(context.TODO(), locked.Tx, actualName)
 		if err != nil {
 			return err
 		}

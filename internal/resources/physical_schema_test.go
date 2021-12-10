@@ -1,17 +1,19 @@
 package resources
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 )
 
-func TestCreatePhysicalSchema(t *testing.T) {
+func TestCreatePhysicalSchemaResource(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
@@ -22,18 +24,18 @@ func TestCreatePhysicalSchema(t *testing.T) {
 		},
 	}
 
-	deletePhysicalSchemaData(create, locked.Conn)
+	deletePhysicalSchemaData(create, locked.Tx)
 
-	err := createPhysicalSchemaData(create, locked.Conn)
+	err := createPhysicalSchemaData(create, locked.Tx)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
 }
 
-func TestDeletePhysicalSchema(t *testing.T) {
+func TestDeletePhysicalSchemaResource(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
@@ -45,9 +47,9 @@ func TestDeletePhysicalSchema(t *testing.T) {
 	}
 	delete.SetId("foo")
 
-	createPhysicalSchemaData(delete, locked.Conn)
+	createPhysicalSchemaData(delete, locked.Tx)
 
-	err := deletePhysicalSchemaData(delete, locked.Conn)
+	err := deletePhysicalSchemaData(delete, locked.Tx)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -56,10 +58,10 @@ func TestDeletePhysicalSchema(t *testing.T) {
 	}
 }
 
-func TestImportPhysicalSchema(t *testing.T) {
+func TestImportPhysicalSchemaResource(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
@@ -72,12 +74,12 @@ func TestImportPhysicalSchema(t *testing.T) {
 	imp.SetId("TestImportPhysicalSchemaWithOtherName")
 
 	stmt := "CREATE SCHEMA IF NOT EXISTS TestImportPhysicalSchemaWithOtherName"
-	_, err := locked.Conn.Execute(stmt)
+	_, err := locked.Tx.Exec(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = importPhysicalSchemaData(imp, locked.Conn)
+	err = importPhysicalSchemaData(context.TODO(), imp, locked.Tx)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -90,10 +92,10 @@ func TestImportPhysicalSchema(t *testing.T) {
 	}
 }
 
-func TestReadPhysicalSchema(t *testing.T) {
+func TestReadPhysicalSchemaResource(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
@@ -110,9 +112,9 @@ func TestReadPhysicalSchema(t *testing.T) {
 		},
 	}
 
-	createPhysicalSchemaData(create, locked.Conn)
+	createPhysicalSchemaData(create, locked.Tx)
 
-	err := readPhysicalSchemaData(read, locked.Conn)
+	err := readPhysicalSchemaTx(context.TODO(), read, locked.Tx)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -122,10 +124,10 @@ func TestReadPhysicalSchema(t *testing.T) {
 	}
 }
 
-func TestRenamePhysicalSchema(t *testing.T) {
+func TestRenamePhysicalSchemaResource(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
@@ -136,7 +138,7 @@ func TestRenamePhysicalSchema(t *testing.T) {
 		},
 	}
 
-	createPhysicalSchemaData(create, locked.Conn)
+	createPhysicalSchemaData(create, locked.Tx)
 
 	newName := name + "_SHINY"
 	rename := &internal.TestData{
@@ -148,7 +150,7 @@ func TestRenamePhysicalSchema(t *testing.T) {
 		},
 	}
 
-	err := updatePhysicalSchemaData(rename, locked.Conn)
+	err := updatePhysicalSchemaData(rename, locked.Tx)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}

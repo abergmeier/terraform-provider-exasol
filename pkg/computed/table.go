@@ -1,11 +1,12 @@
 package computed
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
-	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -87,58 +88,61 @@ func PrimaryKeysSchema() *schema.Schema {
 }
 
 // ReadTable reads necessary information of a Table
-func ReadTable(c *exasol.Conn, schema, table string) (*TableReader, error) {
+func ReadTable(ctx context.Context, tx *sql.Tx, schema, table string) (*TableReader, error) {
 	tr := &TableReader{}
 	var err error
-	tcs, err := readTableColumns(c, schema, table)
+	tcs, err := readTableColumns(ctx, tx, schema, table)
 	if err != nil {
 		return nil, err
 	}
 	tr.Columns = tcs.cols
 	tr.ColumnIndices = tcs.indices
-	tr.Comment, err = readComment(c, schema, table)
+	tr.Comment, err = readComment(ctx, tx, schema, table)
 	if err != nil {
 		return nil, err
 	}
-	tr.PrimaryKeys, err = readPrimaryKeys(c, schema, table)
+	tr.PrimaryKeys, err = readPrimaryKeys(ctx, tx, schema, table)
 	if err != nil {
 		return nil, err
 	}
-	tr.ForeignKeys, err = readForeignKeys(c, schema, table)
+	tr.ForeignKeys, err = readForeignKeys(ctx, tx, schema, table)
 	if err != nil {
 		return nil, err
 	}
 
 	stmt := `SELECT COLUMN_NAME, COLUMN_TYPE, COLUMN_IS_NULLABLE
-FROM EXA_ALL_COLUMNS
+FROM SYS.EXA_ALL_COLUMNS
 WHERE UPPER(COLUMN_SCHEMA) = UPPER(?) AND UPPER(COLUMN_TABLE) = UPPER(?)
 ORDER BY COLUMN_ORDINAL_POSITION`
-	res, err := c.FetchSlice(stmt, []interface{}{
-		schema,
-		table,
-	})
+	res, err := tx.QueryContext(ctx, stmt, schema, table)
 	if err != nil {
 		return nil, err
 	}
 
 	b := &strings.Builder{}
-	for i, column := range res {
+	for i := 0; res.Next(); i++ {
+		var cn string
+		var ct string
+		var nullable bool
+		err := res.Scan(&cn, &ct, &nullable)
+		if err != nil {
+			return nil, err
+		}
 		colInfo := tr.Columns[i].(map[string]interface{})
 		b.WriteString(colInfo["name"].(string))
 		b.WriteString(" ")
 		b.WriteString(colInfo["type"].(string))
-		nullable := column[2].(bool)
 		if nullable {
 			b.WriteString(" NULL")
 		} else {
 			b.WriteString(" NOT NULL")
 		}
 
-		comment := colInfo["comment"]
-		if comment == "" {
-			b.WriteString(",\n")
-		} else {
+		comment, ok := colInfo["comment"]
+		if ok && comment != "" {
 			fmt.Fprintf(b, " COMMENT IS '%s',\n", comment)
+		} else {
+			b.WriteString(",\n")
 		}
 	}
 	for columnName := range tr.PrimaryKeys {
@@ -153,101 +157,115 @@ ORDER BY COLUMN_ORDINAL_POSITION`
 	return tr, nil
 }
 
-func readComment(c *exasol.Conn, schema, name string) (string, error) {
-	stmt := "SELECT TABLE_COMMENT FROM EXA_ALL_TABLES WHERE UPPER(TABLE_SCHEMA) = UPPER(?) AND UPPER(TABLE_NAME) = UPPER(?)"
-	res, err := c.FetchSlice(stmt, []interface{}{
-		schema,
-		name,
-	}, "SYS")
+func readComment(ctx context.Context, tx *sql.Tx, schema, name string) (string, error) {
+	stmt := "SELECT TABLE_COMMENT FROM SYS.EXA_ALL_TABLES WHERE UPPER(TABLE_SCHEMA) = UPPER(?) AND UPPER(TABLE_NAME) = UPPER(?)"
+	res, err := tx.QueryContext(ctx, stmt, schema, name)
 	if err != nil {
 		return "", err
 	}
 
-	if len(res) == 0 || res[0][0] == nil {
-		return "", nil // No comment
+	if !res.Next() {
+		return "", nil
 	}
 
-	return res[0][0].(string), nil
+	var comment interface{}
+	err = res.Scan(&comment)
+	if err != nil {
+		return "", err
+	}
+
+	if comment == nil {
+		return "", nil
+	}
+
+	return comment.(string), nil
 }
 
-func readPrimaryKeys(c *exasol.Conn, schema, name string) (map[string]interface{}, error) {
-	stmt := "SELECT COLUMN_NAME, ORDINAL_POSITION FROM EXA_ALL_CONSTRAINT_COLUMNS WHERE UPPER(CONSTRAINT_SCHEMA) = UPPER(?) AND UPPER(CONSTRAINT_TABLE) = UPPER(?) AND CONSTRAINT_TYPE = 'PRIMARY KEY'"
-	cons, err := c.FetchSlice(stmt, []interface{}{
-		schema,
-		name,
-	}, "SYS")
+func readPrimaryKeys(ctx context.Context, tx *sql.Tx, schema, name string) (map[string]interface{}, error) {
+	stmt := "SELECT COLUMN_NAME, ORDINAL_POSITION FROM SYS.EXA_ALL_CONSTRAINT_COLUMNS WHERE UPPER(CONSTRAINT_SCHEMA) = UPPER(?) AND UPPER(CONSTRAINT_TABLE) = UPPER(?) AND CONSTRAINT_TYPE = 'PRIMARY KEY'"
+	cons, err := tx.QueryContext(ctx, stmt, schema, name)
 	if err != nil {
 		return nil, err
 	}
 
-	pks := make(map[string]interface{}, len(cons))
+	pks := map[string]interface{}{}
 
-	for _, values := range cons {
-		name := values[0].(string)
-		pks[strings.ToLower(name)] = int(values[1].(float64)+0.5) - 1
+	for cons.Next() {
+		var name string
+		var op float64
+		err := cons.Scan(&name, &op)
+		if err != nil {
+			return nil, err
+		}
+		pks[strings.ToLower(name)] = int(op+0.5) - 1
 	}
 
 	return pks, nil
 }
 
-func readForeignKeys(c *exasol.Conn, schema, name string) (map[string]interface{}, error) {
-	stmt := "SELECT COLUMN_NAME, ORDINAL_POSITION FROM EXA_ALL_CONSTRAINT_COLUMNS WHERE UPPER(CONSTRAINT_SCHEMA) = UPPER(?) AND UPPER(CONSTRAINT_TABLE) = UPPER(?) AND CONSTRAINT_TYPE = 'FOREIGN KEY'"
-	cons, err := c.FetchSlice(stmt, []interface{}{
-		schema,
-		name,
-	}, "SYS")
+func readForeignKeys(ctx context.Context, tx *sql.Tx, schema, name string) (map[string]interface{}, error) {
+	stmt := "SELECT COLUMN_NAME, ORDINAL_POSITION FROM SYS.EXA_ALL_CONSTRAINT_COLUMNS WHERE UPPER(CONSTRAINT_SCHEMA) = UPPER(?) AND UPPER(CONSTRAINT_TABLE) = UPPER(?) AND CONSTRAINT_TYPE = 'FOREIGN KEY'"
+	cons, err := tx.QueryContext(ctx, stmt, schema, name)
 	if err != nil {
 		return nil, err
 	}
 
-	fks := make(map[string]interface{}, len(cons))
+	fks := map[string]interface{}{}
 
-	for _, values := range cons {
-		name := values[0].(string)
-		fks[strings.ToLower(name)] = int(values[1].(float64)+0.5) - 1
+	for cons.Next() {
+		var name string
+		var op float64
+		err := cons.Scan(&name, &op)
+		if err != nil {
+			return nil, err
+		}
+		fks[strings.ToLower(name)] = int(op+0.5) - 1
 	}
 
 	return fks, nil
 }
 
-func readTableColumns(c *exasol.Conn, schema, table string) (tableColumns, error) {
+func readTableColumns(ctx context.Context, tx *sql.Tx, schema, table string) (tableColumns, error) {
 	stmt := `SELECT COLUMN_ORDINAL_POSITION, COLUMN_NAME, COLUMN_TYPE, COLUMN_IS_DISTRIBUTION_KEY, COLUMN_COMMENT
-FROM EXA_ALL_COLUMNS
+FROM SYS.EXA_ALL_COLUMNS
 WHERE UPPER(COLUMN_SCHEMA) = UPPER(?) AND UPPER(COLUMN_TABLE) = UPPER(?)
 ORDER BY COLUMN_ORDINAL_POSITION`
 
-	res, err := c.FetchSlice(stmt, []interface{}{
-		schema,
-		table,
-	}, "SYS")
+	res, err := tx.QueryContext(ctx, stmt, schema, table)
 	if err != nil {
 		return tableColumns{}, err
 	}
 
 	tcs := tableColumns{
-		cols:    make([]interface{}, len(res)),
-		indices: make(map[string]interface{}, len(res)),
+		cols:    []interface{}{},
+		indices: map[string]interface{}{},
 	}
 
-	for i, values := range res {
-		cn := values[1].(string)
+	for res.Next() {
+		var op float64
+		var cn string
+		var t string
+		var isDistributionColumn bool
+		var c interface{}
+		err = res.Scan(&op, &cn, &t, &isDistributionColumn, &c)
+		if err != nil {
+			return tableColumns{}, err
+		}
 		col := map[string]interface{}{
 			"name": cn,
-			"type": values[2].(string),
+			"type": t,
 		}
 
-		if values[4] == nil {
-			col["comment"] = ""
-		} else {
-			col["comment"] = values[4].(string)
+		if c != nil {
+			comment, _ := c.(string)
+			col["comment"] = comment
 		}
 
-		tcs.cols[i] = col
-		isDistributionColumn := values[3].(bool)
+		tcs.cols = append(tcs.cols, col)
 		if isDistributionColumn {
 			tcs.distributes = append(tcs.distributes, cn)
 		}
-		tcs.indices[strings.ToLower(cn)] = int(values[0].(float64)+0.5) - 1
+		tcs.indices[strings.ToLower(cn)] = int(op+0.5) - 1
 	}
 
 	return tcs, nil

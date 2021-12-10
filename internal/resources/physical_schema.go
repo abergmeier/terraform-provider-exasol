@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
-	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -24,35 +24,35 @@ func PhysicalSchema() *schema.Resource {
 				Description: "Name of Schema",
 			},
 		},
-		Create:      createPhysicalSchema,
-		ReadContext: readPhysicalSchema,
-		Update:      updatePhysicalSchema,
-		Delete:      deletePhysicalSchema,
+		CreateContext: createPhysicalSchema,
+		ReadContext:   readPhysicalSchema,
+		UpdateContext: updatePhysicalSchema,
+		DeleteContext: deletePhysicalSchema,
 		Importer: &schema.ResourceImporter{
-			State: importPhysicalSchema,
+			StateContext: importPhysicalSchema,
 		},
 	}
 }
 
-func createPhysicalSchema(d *schema.ResourceData, meta interface{}) error {
+func createPhysicalSchema(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
-	err := createPhysicalSchemaData(d, locked.Conn)
+	err := createPhysicalSchemaData(d, locked.Tx)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
-	return locked.Conn.Commit()
+	return diag.FromErr(locked.Tx.Commit())
 }
 
-func createPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
+func createPhysicalSchemaData(d internal.Data, tx *sql.Tx) error {
 	name, err := argument.Name(d)
 	if err != nil {
 		return err
 	}
 
 	stmt := fmt.Sprintf("CREATE SCHEMA %s", name)
-	_, err = c.Execute(stmt)
+	_, err = tx.Exec(stmt)
 
 	if err != nil {
 		return err
@@ -62,22 +62,22 @@ func createPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
 	return nil
 }
 
-func deletePhysicalSchema(d *schema.ResourceData, meta interface{}) error {
+func deletePhysicalSchema(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
-	err := deletePhysicalSchemaData(d, locked.Conn)
+	err := deletePhysicalSchemaData(d, locked.Tx)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
-	return locked.Conn.Commit()
+	return diag.FromErr(locked.Tx.Commit())
 }
 
-func deletePhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
+func deletePhysicalSchemaData(d internal.Data, tx *sql.Tx) error {
 	name := d.Get("name").(string)
 
 	stmt := fmt.Sprintf("DROP SCHEMA %s", name)
-	_, err := c.Execute(stmt)
+	_, err := tx.Exec(stmt)
 	if err != nil {
 		return err
 	}
@@ -86,32 +86,30 @@ func deletePhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
 	return nil
 }
 
-func importPhysicalSchema(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+func importPhysicalSchema(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
-	err := importPhysicalSchemaData(d, locked.Conn)
+	err := importPhysicalSchemaData(ctx, d, locked.Tx)
 	if err != nil {
 		return nil, err
 	}
-	err = locked.Conn.Commit()
+	err = locked.Tx.Commit()
 	if err != nil {
 		return nil, err
 	}
 	return []*schema.ResourceData{d}, nil
 }
 
-func importPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
+func importPhysicalSchemaData(ctx context.Context, d internal.Data, tx *sql.Tx) error {
 
-	slice, err := c.FetchSlice("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = false", []interface{}{
-		d.Id(),
-	}, "SYS")
+	r, err := tx.QueryContext(ctx, "SELECT SCHEMA_NAME FROM SYS.EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = false", d.Id())
 	if err != nil {
 		return err
 	}
 
-	if len(slice) == 0 {
-		return fmt.Errorf("Schema %s not found", d.Id())
+	if !r.Next() {
+		return fmt.Errorf("schema %s not found", d.Id())
 	}
 	d.SetId(strings.ToUpper(d.Id()))
 	return nil
@@ -119,25 +117,23 @@ func importPhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
 
 func readPhysicalSchema(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
-	return readPhysicalSchemaData(d, locked.Conn)
+	return readPhysicalSchemaTx(ctx, d, locked.Tx)
 }
 
-func readPhysicalSchemaData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
+func readPhysicalSchemaTx(ctx context.Context, d internal.Data, tx *sql.Tx) diag.Diagnostics {
 	name, err := argument.Name(d)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	res, err := c.FetchSlice("SELECT SCHEMA_NAME FROM EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = FALSE ", []interface{}{
-		name,
-	}, "SYS")
+	res, err := tx.QueryContext(ctx, "SELECT SCHEMA_NAME FROM SYS.EXA_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = FALSE ", name)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if len(res) == 0 {
+	if !res.Next() {
 		return diag.Errorf("Schema %s not found", name)
 	}
 
@@ -145,22 +141,22 @@ func readPhysicalSchemaData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
 	return nil
 }
 
-func updatePhysicalSchema(d *schema.ResourceData, meta interface{}) error {
+func updatePhysicalSchema(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
-	err := updatePhysicalSchemaData(d, locked.Conn)
+	err := updatePhysicalSchemaData(d, locked.Tx)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
-	return locked.Conn.Commit()
+	return diag.FromErr(locked.Tx.Commit())
 }
 
-func updatePhysicalSchemaData(d internal.Data, c *exasol.Conn) error {
+func updatePhysicalSchemaData(d internal.Data, tx *sql.Tx) error {
 
 	if d.HasChange("name") {
 		old, new := d.GetChange("name")
-		err := db.Rename(c, "SCHEMA", old.(string), new.(string), "")
+		err := db.Rename(tx, "SCHEMA", old.(string), new.(string), "")
 		if err != nil {
 			return err
 		}

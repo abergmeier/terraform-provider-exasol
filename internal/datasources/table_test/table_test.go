@@ -1,18 +1,18 @@
 package table_test
 
 import (
+	"database/sql"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-
-	"github.com/grantstreetgroup/go-exasol-client"
 )
 
 var (
@@ -22,12 +22,12 @@ var (
 			ObjectTest: test.ObjectTest{
 				ResourceName: "t1",
 				DbName:       "t1_" + tableSuffix,
-				Stmt: fmt.Sprintf(`CREATE TABLE t1_%s (a VARCHAR(20),
+				Stmt: fmt.Sprintf(`CREATE TABLE %s.t1_%s (a VARCHAR(20),
 			b DECIMAL(24,4) NOT NULL,
 			c DECIMAL DEFAULT 122,
 			d DOUBLE,
 			e TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			f BOOL)`, tableSuffix),
+			f BOOL)`, schemaName, tableSuffix),
 			},
 			expectedColumns: []expectedColumns{
 				{
@@ -60,7 +60,7 @@ var (
 			ObjectTest: test.ObjectTest{
 				ResourceName: "t2",
 				DbName:       "t2_" + tableSuffix,
-				Stmt:         fmt.Sprintf(`CREATE TABLE t2_%s AS SELECT a,b,c+1 AS c FROM t1_%s`, tableSuffix, tableSuffix),
+				Stmt:         fmt.Sprintf(`CREATE TABLE %s.t2_%s AS SELECT a,b,c+1 AS c FROM %s.t1_%s`, schemaName, tableSuffix, schemaName, tableSuffix),
 			},
 			expectedColumns: []expectedColumns{
 				{
@@ -81,7 +81,7 @@ var (
 			ObjectTest: test.ObjectTest{
 				ResourceName: "t3",
 				DbName:       "t3_" + tableSuffix,
-				Stmt:         fmt.Sprintf(`CREATE TABLE t3_%s AS SELECT count(*) AS my_count FROM t1_%s WITH NO DATA`, tableSuffix, tableSuffix),
+				Stmt:         fmt.Sprintf(`CREATE TABLE %s.t3_%s AS SELECT count(*) AS my_count FROM %s.t1_%s WITH NO DATA`, schemaName, tableSuffix, schemaName, tableSuffix),
 			},
 			expectedColumns: []expectedColumns{
 				{
@@ -94,7 +94,7 @@ var (
 			ObjectTest: test.ObjectTest{
 				ResourceName: "t4",
 				DbName:       "t4_" + tableSuffix,
-				Stmt:         fmt.Sprintf(`CREATE TABLE t4_%s LIKE t1_%s`, tableSuffix, tableSuffix),
+				Stmt:         fmt.Sprintf(`CREATE TABLE %s.t4_%s LIKE %s.t1_%s`, schemaName, tableSuffix, schemaName, tableSuffix),
 			},
 			expectedColumns: []expectedColumns{
 				{
@@ -127,10 +127,10 @@ var (
 			ObjectTest: test.ObjectTest{
 				ResourceName: "t5",
 				DbName:       "t5_" + tableSuffix,
-				Stmt: fmt.Sprintf(`CREATE TABLE t5_%s (id int IDENTITY PRIMARY KEY,
-				LIKE t1_%s INCLUDING DEFAULTS,
+				Stmt: fmt.Sprintf(`CREATE TABLE %s.t5_%s (id int IDENTITY PRIMARY KEY,
+				LIKE %s.t1_%s INCLUDING DEFAULTS,
 				g DOUBLE,
-				DISTRIBUTE BY a,b)`, tableSuffix, tableSuffix),
+				DISTRIBUTE BY a,b)`, schemaName, tableSuffix, schemaName, tableSuffix),
 			},
 			expectedColumns: []expectedColumns{
 				{
@@ -174,11 +174,11 @@ var (
 			ObjectTest: test.ObjectTest{
 				ResourceName: "t6",
 				DbName:       "t6_" + tableSuffix,
-				Stmt: fmt.Sprintf(`CREATE TABLE t6_%s (order_id INT,
+				Stmt: fmt.Sprintf(`CREATE TABLE %s.t6_%s (order_id INT,
 					order_price DOUBLE,
 					order_date DATE,
 					country VARCHAR(40),
-					PARTITION BY order_date)`, tableSuffix),
+					PARTITION BY order_date)`, schemaName, tableSuffix),
 			},
 			expectedColumns: []expectedColumns{
 				{
@@ -203,7 +203,7 @@ var (
 			ObjectTest: test.ObjectTest{
 				ResourceName: "t7",
 				DbName:       "t7_" + tableSuffix,
-				Stmt:         fmt.Sprintf(`SELECT * INTO TABLE t7_%s FROM t1_%s`, tableSuffix, tableSuffix),
+				Stmt:         fmt.Sprintf(`SELECT * INTO TABLE %s.t7_%s FROM %s.t1_%s`, schemaName, tableSuffix, schemaName, tableSuffix),
 			},
 			expectedColumns: []expectedColumns{
 				{
@@ -236,7 +236,7 @@ var (
 			ObjectTest: test.ObjectTest{
 				ResourceName: "t8",
 				DbName:       "t8_" + tableSuffix,
-				Stmt:         fmt.Sprintf(`CREATE TABLE t8_%s (ref_id int CONSTRAINT FK_T5 REFERENCES t5_%s (id) DISABLE, b VARCHAR(20))`, tableSuffix, tableSuffix),
+				Stmt:         fmt.Sprintf(`CREATE TABLE %s.t8_%s (ref_id int CONSTRAINT FK_T5 REFERENCES %s.t5_%s (id) DISABLE, b VARCHAR(20))`, schemaName, tableSuffix, schemaName, tableSuffix),
 			},
 			expectedColumns: []expectedColumns{
 				{
@@ -269,7 +269,7 @@ type expectedColumns struct {
 
 // TestAccExasolTable_basic all examples provided by Exasol.
 func TestAccExasolTable_basic(t *testing.T) {
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
 	for i, v := range testDefs {
@@ -281,10 +281,10 @@ data "exasol_table" "%s" {
 	name = "%s"
 	schema = data.exasol_physical_schema.dummy.name
 }
-`, test.HCLProviderFromConf(locked.Conn.Conf), schemaName, v.ObjectTest.ResourceName, v.ObjectTest.DbName)
+`, test.HCLProviderFromConf(locked.Conf), schemaName, v.ObjectTest.ResourceName, v.ObjectTest.DbName)
 	}
 
-	basicSetup(t, locked.Conn)
+	basicSetup(t, locked.Tx)
 
 	ps := test.NewDefaultAccProviders()
 
@@ -409,25 +409,25 @@ data "exasol_table" "%s" {
 	})
 }
 
-func basicSetup(t *testing.T, c *exasol.Conn) {
+func basicSetup(t *testing.T, tx *sql.Tx) {
 
 	for _, testDef := range testDefs {
 
 		stmt := testDef.ObjectTest.Stmt
 
-		tryDropTable(testDef.ObjectTest.DbName, c)
+		tryDropTable(testDef.ObjectTest.DbName, tx)
 
-		_, err := c.Execute(stmt, nil, schemaName)
+		_, err := tx.Exec(stmt)
 		if err != nil {
-			t.Fatal("Unexpected error:", err)
+			t.Fatalf("Basic setup exec %s: %s", stmt, err)
 		}
 	}
-	c.Commit()
+	tx.Commit()
 }
 
-func tryDropTable(ref string, c *exasol.Conn) {
-	stmt := fmt.Sprintf("DROP TABLE %s", ref)
-	c.Execute(stmt, nil, schemaName)
+func tryDropTable(ref string, tx *sql.Tx) {
+	stmt := fmt.Sprintf("DROP TABLE %s.%s", schemaName, ref)
+	tx.Exec(stmt)
 }
 
 func testColumns(id string, expected []expectedColumns) resource.TestCheckFunc {

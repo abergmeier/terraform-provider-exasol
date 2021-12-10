@@ -1,28 +1,38 @@
 package view
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/statements"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
+	"github.com/abergmeier/terraform-provider-exasol/pkg/tx"
 	"github.com/andreyvit/diff"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func TestCreate(t *testing.T) {
+func testResourceData() *schema.ResourceData {
+
+	testResource := &schema.Resource{
+		Schema: Resource().Schema,
+	}
+	return testResource.TestResourceData()
+}
+
+func TestViewResourceCreate(t *testing.T) {
 	t.Parallel()
+
+	create := testResourceData()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
-	locked.Conn.Execute(fmt.Sprintf("DROP VIEW %s", name), nil, schemaName)
+	locked.Tx.Exec(fmt.Sprintf("DROP VIEW %s.%s", schemaName, name))
 
-	create := &internal.TestData{
-		Values: map[string]interface{}{},
-	}
-	diags := createData(create, locked.Conn, RequiredCreateArguments{
+	diags := createData(context.TODO(), create, locked.Tx, RequiredCreateArguments{
 		RequiredArguments: argument.RequiredArguments{
 			Schema: schemaName,
 			Name:   name,
@@ -33,35 +43,32 @@ func TestCreate(t *testing.T) {
 		t.Fatal("Unexpected error:", diags)
 	}
 
-	res, err := locked.Conn.FetchSlice(fmt.Sprintf("SELECT COLUMN_SCHEMA FROM %s", name), nil, schemaName)
+	res, err := locked.Tx.Query(fmt.Sprintf("SELECT COLUMN_SCHEMA FROM %s.%s", schemaName, name))
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
-	if len(res) == 0 {
+	if !res.Next() {
 		t.Fatal("Unexpected empty result")
 	}
 }
 
-func TestColumn(t *testing.T) {
+func TestViewResourceColumn(t *testing.T) {
 	t.Parallel()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
-	locked.Conn.Execute(fmt.Sprintf("DROP VIEW %s", name), nil, schemaName)
+	locked.Tx.Exec(fmt.Sprintf("DROP VIEW %s.%s", schemaName, name))
 
-	create := &internal.TestData{
-		Values: map[string]interface{}{
-			"column": []interface{}{
-				map[string]interface{}{
-					"name":    "Bar",
-					"comment": "This is Baaar",
-				},
-			},
+	create := testResourceData()
+	create.Set("column", []interface{}{
+		map[string]interface{}{
+			"name":    "Bar",
+			"comment": "This is Baaar",
 		},
-	}
-	diags := createData(create, locked.Conn, RequiredCreateArguments{
+	})
+	diags := createData(context.TODO(), create, locked.Tx, RequiredCreateArguments{
 		RequiredArguments: argument.RequiredArguments{
 			Schema: schemaName,
 			Name:   name,
@@ -72,31 +79,28 @@ func TestColumn(t *testing.T) {
 		t.Fatal("Unexpected error:", diags)
 	}
 
-	res, err := locked.Conn.FetchSlice(fmt.Sprintf("SELECT Bar FROM %s", name), nil, schemaName)
+	res, err := locked.Tx.Query(fmt.Sprintf("SELECT Bar FROM %s.%s", schemaName, name))
 	if err != nil {
-		t.Fatal("Unexpected error:", err)
+		t.Fatal("Unexpected error in View Column test:", err)
 	}
-	if len(res) == 0 {
+	if !res.Next() {
 		t.Fatal("Unexpected empty result")
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestViewResourceDelete(t *testing.T) {
 	t.Parallel()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE VIEW %s AS SELECT COLUMN_TYPE FROM SYS.EXA_ALL_COLUMNS", name), nil, schemaName)
+	tx.MustExecf(locked.Tx, "CREATE OR REPLACE VIEW %s.%s AS SELECT COLUMN_TYPE FROM SYS.EXA_ALL_COLUMNS", schemaName, name)
 
-	delete := &internal.TestData{
-		Values: map[string]interface{}{
-			"subquery": "REALLYREALLYFUCKEDUP,",
-		},
-	}
-	diags := deleteData(delete, locked.Conn, argument.RequiredArguments{
+	delete := testResourceData()
+	delete.Set("subquery", "REALLYREALLYFUCKEDUP,")
+	diags := deleteData(delete, locked.Tx, argument.RequiredArguments{
 		Schema: schemaName,
 		Name:   name,
 	})
@@ -104,73 +108,28 @@ func TestDelete(t *testing.T) {
 		t.Fatal("Unexpected error:", diags)
 	}
 
-	_, err := locked.Conn.Execute(fmt.Sprintf("SELECT COLUMN_TYPE FROM %s", name), nil, schemaName)
+	_, err := locked.Tx.Exec(fmt.Sprintf("SELECT COLUMN_TYPE FROM %s.%s", schemaName, name))
 	if err == nil {
 		t.Fatalf("Seems like View %s was not deleted", name)
 	}
 }
 
-func TestComment(t *testing.T) {
+func TestViewResourceImport(t *testing.T) {
 	t.Parallel()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE VIEW %s AS SELECT COLUMN_TYPE FROM SYS.EXA_ALL_COLUMNS", name), nil, schemaName)
+	locked.Tx.Exec(fmt.Sprintf("CREATE OR REPLACE VIEW %s.%s AS SELECT COLUMN_NAME FROM SYS.EXA_ALL_COLUMNS", schemaName, name))
 
-	upd := &internal.TestData{
-		Values: map[string]interface{}{
-			"subquery": "SELECT COLUMN_TYPE FROM SYS.EXA_ALL_COLUMNS",
-		},
-		NewValues: map[string]interface{}{
-			"comment":  "Foo",
-			"subquery": "SELECT COLUMN_TYPE FROM SYS.EXA_ALL_COLUMNS",
-		},
-	}
-
-	diags := updateData(upd, locked.Conn, argument.RequiredArguments{
-		Schema: schemaName,
-		Name:   name,
-	})
-	if diags.HasError() {
-		t.Fatal("Unexpected error:", diags)
-	}
-
-	res, err := locked.Conn.FetchSlice("SELECT VIEW_COMMENT FROM EXA_ALL_VIEWS WHERE UPPER(VIEW_NAME) = UPPER(?)", []interface{}{
-		name,
-	}, "SYS")
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	actual := res[0][0]
-	if actual != "Foo" {
-		t.Fatalf("Expected comment Foo: %s", actual)
-	}
-
-}
-
-func TestImport(t *testing.T) {
-	t.Parallel()
-
-	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
-
-	locked := exaClient.Lock()
-	defer locked.Unlock()
-
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE VIEW %s AS SELECT COLUMN_NAME FROM SYS.EXA_ALL_COLUMNS", name), nil, schemaName)
-
-	imp := &internal.TestData{
-		Values: map[string]interface{}{
-			"schema":   schemaName,
-			"subquery": "SELECT COLUMN_NAME FROM SYS.EXA_ALL_COLUMNS",
-		},
-	}
+	imp := testResourceData()
+	imp.Set("schema", schemaName)
+	imp.Set("subquery", "SELECT COLUMN_NAME FROM SYS.EXA_ALL_COLUMNS")
 	imp.SetId(name)
 
-	err := importData(imp, locked.Conn)
+	err := importData(context.TODO(), imp, locked.Tx)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
@@ -185,64 +144,59 @@ func TestImport(t *testing.T) {
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func TestViewResourceUpdate(t *testing.T) {
 	t.Parallel()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
-	locked.Conn.Execute(fmt.Sprintf("DROP VIEW %s", name), nil, schemaName)
+	locked.Tx.Exec(fmt.Sprintf("DROP VIEW %s.%s", schemaName, name))
 
-	create := &internal.TestData{
-		Values: map[string]interface{}{},
-	}
+	create := testResourceData()
 	args := argument.RequiredArguments{
 		Schema: schemaName,
 		Name:   name,
 	}
-	diags := createData(create, locked.Conn, RequiredCreateArguments{
+	diags := createData(context.TODO(), create, locked.Tx, RequiredCreateArguments{
 		RequiredArguments: args,
-		subquery: `SELECT COLUMN_SCHEMA
-FROM SYS.EXA_ALL_COLUMNS
-`,
+		subquery:          "SELECT COLUMN_SCHEMA FROM SYS.EXA_ALL_COLUMNS",
 	}, false)
 	if diags.HasError() {
 		t.Fatal("Unexpected error:", diags)
 	}
 
-	read := &internal.TestData{
-		Values: map[string]interface{}{},
-	}
-	diags = readData(read, locked.Conn, args)
+	read := testResourceData()
+	diags = readData(context.TODO(), read, locked.Tx, args)
 	if diags.HasError() {
 		t.Fatal("Unexpected error:", diags)
 	}
 
-	if read.Get("subquery").(string) != `SELECT COLUMN_SCHEMA
-FROM SYS.EXA_ALL_COLUMNS
-` {
+	if read.Get("subquery").(string) != "SELECT COLUMN_SCHEMA FROM SYS.EXA_ALL_COLUMNS" {
 		t.Fatal("Unexpected subquery:", read.Get("subquery").(string))
 	}
 
-	locked.Conn.Execute(fmt.Sprintf("CREATE OR REPLACE VIEW %s AS SELECT COLUMN_NAME FROM SYS.EXA_ALL_COLUMNS", name), nil, schemaName)
+	tx.MustExecf(locked.Tx, "CREATE OR REPLACE VIEW %s.%s AS SELECT COLUMN_NAME FROM SYS.EXA_ALL_COLUMNS", schemaName, name)
 
-	res, err := locked.Conn.FetchSlice("SELECT VIEW_TEXT FROM EXA_ALL_VIEWS WHERE UPPER(VIEW_NAME) = UPPER(?)", []interface{}{
-		name,
-	}, "SYS")
+	res, err := locked.Tx.Query("SELECT VIEW_TEXT FROM SYS.EXA_ALL_VIEWS WHERE UPPER(VIEW_NAME) = UPPER(?)", name)
+	if err != nil {
+		t.Fatal("Unexpected error in View Update test:", err)
+	}
+	if !res.Next() {
+		t.Fatal("No results found in View Update test")
+	}
+	var text string
+	err = res.Scan(&text)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
-	text := res[0][0].(string)
 
-	if text != fmt.Sprintf("CREATE OR REPLACE VIEW %s AS SELECT COLUMN_NAME FROM SYS.EXA_ALL_COLUMNS", name) {
+	if text != fmt.Sprintf("CREATE OR REPLACE VIEW %s.%s AS SELECT COLUMN_NAME FROM SYS.EXA_ALL_COLUMNS", schemaName, name) {
 		t.Fatal("Unexpected View text:", text)
 	}
 
-	read = &internal.TestData{
-		Values: map[string]interface{}{},
-	}
-	diags = readData(read, locked.Conn, args)
+	read = testResourceData()
+	diags = readData(context.TODO(), read, locked.Tx, args)
 	if diags.HasError() {
 		t.Fatal("Unexpected error:", diags)
 	}
@@ -251,36 +205,37 @@ FROM SYS.EXA_ALL_COLUMNS
 		t.Fatal("Unexpected subquery:", read.Get("subquery").(string))
 	}
 
-	update := &internal.TestData{
-		Values: map[string]interface{}{
-			"subquery": "SELECT COLUMN_SCHEMA FROM SYS.EXA_ALL_COLUMNS",
-		},
-	}
-	diags = updateData(update, locked.Conn, args)
+	update := testResourceData()
+	update.Set("subquery", "SELECT COLUMN_SCHEMA FROM SYS.EXA_ALL_COLUMNS")
+	diags = updateData(context.TODO(), update, locked.Tx, args)
 	if diags.HasError() {
 		t.Fatal("Unexpected error:", diags)
 	}
 
-	res, err = locked.Conn.FetchSlice("SELECT VIEW_TEXT FROM EXA_ALL_VIEWS WHERE UPPER(VIEW_NAME) = UPPER(?)", []interface{}{
-		name,
-	}, "SYS")
+	res, err = locked.Tx.Query("SELECT VIEW_TEXT FROM SYS.EXA_ALL_VIEWS WHERE UPPER(VIEW_NAME) = UPPER(?)", name)
 	if err != nil {
 		t.Fatal("Unexpected error:", err)
 	}
-	text = res[0][0].(string)
+	if !res.Next() {
+		t.Fatal("No view_text found in View Update test")
+	}
+	err = res.Scan(&text)
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
 	if text == fmt.Sprintf("CREATE OR REPLACE VIEW %s AS SELECT COLUMN_SCHEMA FROM SYS.EXA_ALL_COLUMNS", name) {
 		t.Fatal("Unexpected text:", text)
 	}
 }
 
-func TestUpdateEdgeCase(t *testing.T) {
+func TestViewResourceUpdateEdgeCase(t *testing.T) {
 	t.Parallel()
 
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
-	locked.Conn.Execute(fmt.Sprintf("DROP VIEW %s", name), nil, schemaName)
+	locked.Tx.Exec(fmt.Sprintf("DROP VIEW %s.%s", schemaName, name))
 
 	create := Resource().TestResourceData()
 
@@ -288,7 +243,7 @@ func TestUpdateEdgeCase(t *testing.T) {
 		Schema: schemaName,
 		Name:   name,
 	}
-	diags := createData(create, locked.Conn, RequiredCreateArguments{
+	diags := createData(context.TODO(), create, locked.Tx, RequiredCreateArguments{
 		RequiredArguments: args,
 		subquery:          "SELECT COLUMN_SCHEMA FROM SYS.EXA_ALL_COLUMNS",
 	}, false)
@@ -300,12 +255,12 @@ func TestUpdateEdgeCase(t *testing.T) {
 		Schema: args.Schema,
 		Name:   args.Name,
 	}
-	err := dv.Execute(locked.Conn)
+	err := dv.Execute(locked.Tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	diags = readData(create, locked.Conn, args)
+	diags = readData(context.TODO(), create, locked.Tx, args)
 	if diags.HasError() {
 		t.Fatal("Unexpected error:", diags)
 	}

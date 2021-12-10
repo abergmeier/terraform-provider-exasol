@@ -2,6 +2,8 @@ package computed
 
 import (
 	"bufio"
+	"context"
+	"database/sql"
 	"fmt"
 	"regexp"
 	"strings"
@@ -9,12 +11,12 @@ import (
 	"unicode/utf8"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
-	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/pkg/errors"
 )
 
 var (
 	columnReg             = regexp.MustCompile(`(?s)CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?\s+\((.*)\)\s+AS`)
-	subqueryReg           = regexp.MustCompile(`(?s)CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?AS\s+(.*)(?:\s+COMMENT\s+IS.*)?`)
+	subqueryReg           = regexp.MustCompile(`(?s)CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?AS\s+(.*?)(?:\s+COMMENT\s+IS.*)?$`)
 	ReadViewNoResultError = &readViewNoResultError{}
 )
 
@@ -57,34 +59,39 @@ func (v *View) SetColumns(d internal.Data) error {
 	return d.Set("column", columns)
 }
 
-func ReadView(c *exasol.Conn, schema, name string) (*View, error) {
-	stmt := "SELECT VIEW_COMMENT, VIEW_TEXT FROM EXA_ALL_VIEWS WHERE UPPER(VIEW_SCHEMA) = UPPER(?) AND UPPER(VIEW_NAME) = UPPER(?)"
-	res, err := c.FetchSlice(stmt, []interface{}{
-		schema,
-		name,
-	}, "SYS")
+func ReadView(ctx context.Context, tx *sql.Tx, schema, name string) (*View, error) {
+	stmt := "SELECT VIEW_COMMENT, VIEW_TEXT FROM SYS.EXA_ALL_VIEWS WHERE UPPER(VIEW_SCHEMA) = UPPER(?) AND UPPER(VIEW_NAME) = UPPER(?)"
+	res, err := tx.QueryContext(ctx, stmt, schema, name)
 	if err != nil {
 		return nil, fmt.Errorf("selecting View Metadata for %s.%s failed: %s", schema, name, err)
 	}
 
-	if len(res) == 0 {
+	if !res.Next() {
 		return nil, fmt.Errorf("selecting View Metadata for %s.%s resulted in no result%w", schema, name, ReadViewNoResultError)
 	}
 
-	row := res[0]
-	comment, err := readViewComment(row)
+	var c interface{}
+	var text string
+	err = res.Scan(&c, &text)
+	if err != nil {
+		return nil, errors.Wrap(err, "View Query scan failed")
+	}
+
+	columns, err := readViewColumnsByString(text)
 	if err != nil {
 		return nil, err
 	}
 
-	columns, err := readViewColumnsByRow(row)
+	subquery, err := readViewSubquery(text)
 	if err != nil {
 		return nil, err
 	}
 
-	subquery, err := readViewSubquery(row)
-	if err != nil {
-		return nil, err
+	var comment string
+	if c == nil {
+		comment = ""
+	} else {
+		comment = c.(string)
 	}
 
 	return &View{
@@ -92,15 +99,6 @@ func ReadView(c *exasol.Conn, schema, name string) (*View, error) {
 		Columns:  columns,
 		Subquery: subquery,
 	}, nil
-}
-
-func readViewComment(row []interface{}) (string, error) {
-
-	if row[0] == nil {
-		return "", nil // No comment
-	}
-
-	return row[0].(string), nil
 }
 
 func scanComma(data []byte, atEOF bool) (advance int, token []byte, err error) {
@@ -135,11 +133,6 @@ func scanComma(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	// Request more data.
 	return start, nil, nil
 
-}
-
-func readViewColumnsByRow(row []interface{}) ([]ViewColumn, error) {
-	text := row[1].(string)
-	return readViewColumnsByString(text)
 }
 
 func readViewColumnsByString(text string) ([]ViewColumn, error) {
@@ -193,9 +186,7 @@ func scanColumn(text string) ViewColumn {
 	}
 }
 
-func readViewSubquery(row []interface{}) (string, error) {
-	text := row[1].(string)
-
+func readViewSubquery(text string) (string, error) {
 	submatch := subqueryReg.FindSubmatch([]byte(text))
 	if len(submatch) == 0 {
 		return "", fmt.Errorf("regex matching Views CREATE text failed: %s", text)

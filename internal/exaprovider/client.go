@@ -1,22 +1,28 @@
 package exaprovider
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"testing"
 
-	"github.com/grantstreetgroup/go-exasol-client"
+	"database/sql"
+
+	"github.com/exasol/exasol-driver-go"
 )
 
 // Client implements everything that is needed to act as a Provider
 // including the actual client to Exasol Websocket
 type Client struct {
-	conf exasol.ConnConf
+	conf *exasol.DSNConfig
 }
 
 type Locked struct {
-	Conn *exasol.Conn
+	Conf *exasol.DSNConfig
+	Tx   *sql.Tx
 }
 
-func NewClient(conf exasol.ConnConf) *Client {
+func NewClient(conf *exasol.DSNConfig) *Client {
 	c := &Client{
 		conf: conf,
 	}
@@ -24,28 +30,31 @@ func NewClient(conf exasol.ConnConf) *Client {
 	return c
 }
 
-func newConnect(conf exasol.ConnConf) *exasol.Conn {
-	conn, err := exasol.Connect(conf)
+func (c *Client) Lock(ctx context.Context) *Locked {
+	db, err := sql.Open("exasol", c.conf.Autocommit(false).String())
 	if err != nil {
 		panic(err)
 	}
-	conn.DisableAutoCommit()
-	return conn
-}
-
-func (c *Client) Lock() *Locked {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		panic(err)
+	}
 	return &Locked{
-		Conn: newConnect(c.conf),
+		Conf: c.conf,
+		Tx:   tx,
 	}
 }
 
 func (l *Locked) Unlock() {
 	// Ensure that only explicitly committed operations stay
-	conn := l.Conn
-	l.Conn = nil
-	err := conn.Rollback()
-	if err != nil {
+	err := l.Tx.Rollback()
+	if err != nil && !errors.Is(err, sql.ErrTxDone) {
 		fmt.Println("Rollback failed:", err)
 	}
-	conn.Disconnect()
+
+	l.Tx = nil
+}
+
+func TestLock(t *testing.T, c *Client) *Locked {
+	return c.Lock(context.TODO())
 }

@@ -1,15 +1,14 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
-
-	"github.com/grantstreetgroup/go-exasol-client"
 )
 
 // Comment changes the comment on the Database object
-func Comment(c *exasol.Conn, t, objectName, newComment, schema string) error {
+func Comment(tx *sql.Tx, t, objectName, newComment, schema string) error {
 
-	stmt := fmt.Sprintf("COMMENT ON %s %s IS %s", t, objectName, newComment)
-	_, err := c.Execute(stmt, nil, schema)
+	stmt := fmt.Sprintf("COMMENT ON %s %s.%s IS %s", t, schema, objectName, newComment)
+	_, err := tx.Exec(stmt)
 	return err
 }

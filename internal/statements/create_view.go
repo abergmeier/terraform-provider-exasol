@@ -1,9 +1,9 @@
 package statements
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
-
-	"github.com/grantstreetgroup/go-exasol-client"
 )
 
 type ViewColumn struct {
@@ -21,7 +21,7 @@ type CreateView struct {
 }
 
 // Execute creates or replaces View
-func (s *CreateView) Execute(c *exasol.Conn) error {
+func (s *CreateView) Execute(ctx context.Context, tx *sql.Tx) error {
 
 	createPrefix := "CREATE VIEW"
 	if s.Replace {
@@ -49,7 +49,7 @@ func (s *CreateView) Execute(c *exasol.Conn) error {
 		colPart += ")"
 	}
 
-	stmt := fmt.Sprintf("%s %s%s AS %s%s", createPrefix, s.Name, colPart, s.Subquery, viewComment)
-	_, err := c.Execute(stmt, nil, s.Schema)
+	stmt := fmt.Sprintf("%s %s.%s%s AS %s%s", createPrefix, s.Schema, s.Name, colPart, s.Subquery, viewComment)
+	_, err := tx.ExecContext(ctx, stmt)
 	return err
 }

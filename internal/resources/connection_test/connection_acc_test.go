@@ -1,11 +1,13 @@
 package connection_test
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/resources/connection"
 	"github.com/abergmeier/terraform-provider-exasol/internal/resources/root"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
@@ -63,7 +65,7 @@ func TestAccExasolConnection_import(t *testing.T) {
 
 	dbName := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
 	createConnection := func() {
@@ -71,17 +73,17 @@ func TestAccExasolConnection_import(t *testing.T) {
 TO 'ftp://192.168.1.1/'
 USER 'agent_007'
 IDENTIFIED BY 'secret'`, dbName)
-		test.Execute(t, locked.Conn, stmt)
-		test.Commit(t, locked.Conn)
+		test.Execute(t, locked.Tx, stmt)
+		test.Commit(t, locked.Tx)
 	}
 
 	tryDeleteConnection := func() {
 		stmt := fmt.Sprintf(`DROP CONNECTION %s`, dbName)
-		_, err := locked.Conn.Execute(stmt)
+		_, err := locked.Tx.Exec(stmt)
 		if err != nil {
 			return
 		}
-		locked.Conn.Commit()
+		locked.Tx.Commit()
 	}
 	defer tryDeleteConnection()
 
@@ -135,15 +137,15 @@ func testExists(p *schema.Provider, id string) resource.TestCheckFunc {
 			return err
 		}
 
-		return test.True(p, func(c internal.Conn) (bool, error) {
-			return connection.Exists(c, actualName)
+		return test.True(p, func(tx *sql.Tx) (bool, error) {
+			return connection.Exists(context.TODO(), tx, actualName)
 		})(state)
 	}
 }
 
 func testExistsNotByName(p *schema.Provider, actualName string) resource.TestCheckFunc {
 
-	return test.False(p, func(c internal.Conn) (bool, error) {
-		return connection.Exists(c, actualName)
+	return test.False(p, func(tx *sql.Tx) (bool, error) {
+		return connection.Exists(context.TODO(), tx, actualName)
 	})
 }

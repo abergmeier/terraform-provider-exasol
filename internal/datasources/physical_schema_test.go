@@ -1,22 +1,24 @@
 package datasources
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
+	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 )
 
 func TestReadPhysicalSchema(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	stmt := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s", name)
-	_, err := locked.Conn.Execute(stmt)
+	_, err := locked.Tx.Exec(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +29,7 @@ func TestReadPhysicalSchema(t *testing.T) {
 		},
 	}
 
-	diags := readPhysicalSchemaData(read, locked.Conn)
+	diags := readPhysicalSchemaData(context.TODO(), read, locked.Tx)
 	if diags.HasError() {
 		t.Fatal("Unexpected error:", diags)
 	}

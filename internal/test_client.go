@@ -4,13 +4,13 @@ import (
 	"os"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
-	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/exasol/exasol-driver-go"
 )
 
-func MustCreateTestConf() exasol.ConnConf {
+func MustCreateTestConf() *exasol.DSNConfig {
 	exaHost := os.Getenv("EXAHOST")
 	if exaHost == "" {
-		panic("Tests need EXAHOST to run")
+		exaHost = "localhost"
 	}
 
 	exaUID := os.Getenv("EXAUID")
@@ -23,13 +23,8 @@ func MustCreateTestConf() exasol.ConnConf {
 		exaPWD = "exasol"
 	}
 
-	return exasol.ConnConf{
-		Host:     exaHost,
-		Port:     8563,
-		Username: exaUID,
-		Password: exaPWD,
-		//LogLevel: "debug",
-	}
+	return exasol.NewConfig(exaUID, exaPWD).Host(exaHost).Port(8563).Autocommit(false).ValidateServerCertificate(false)
+	//LogLevel: "debug",
 }
 
 func MustCreateTestClient() *exaprovider.Client {

@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,7 +12,6 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/internal/globallock"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
-	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -58,13 +58,14 @@ func Resource() *schema.Resource {
 func create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	err := globallock.RunAndRetryRollbacks(func() error {
-		locked := c.Lock()
+		locked := c.Lock(ctx)
 		defer locked.Unlock()
-		err := createData(d, locked.Conn)
+		err := createData(d, locked.Tx)
 		if err != nil {
 			return err
 		}
-		return locked.Conn.Commit()
+		err = locked.Tx.Commit()
+		return err
 	})
 	if err != nil {
 		return diag.FromErr(err)
@@ -72,7 +73,7 @@ func create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.
 	return nil
 }
 
-func createData(d internal.Data, c *exasol.Conn) error {
+func createData(d internal.Data, tx *sql.Tx) error {
 
 	name, err := argument.Name(d)
 	if err != nil {
@@ -95,7 +96,7 @@ func createData(d internal.Data, c *exasol.Conn) error {
 		return errors.New("no identification found")
 	}
 
-	_, err = c.Execute(stmt)
+	_, err = tx.Exec(stmt)
 	if err != nil {
 		return err
 	}
@@ -106,13 +107,14 @@ func createData(d internal.Data, c *exasol.Conn) error {
 func delete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	err := globallock.RunAndRetryRollbacks(func() error {
 		c := meta.(*exaprovider.Client)
-		locked := c.Lock()
+		locked := c.Lock(ctx)
 		defer locked.Unlock()
-		err := deleteData(d, locked.Conn)
+		err := deleteData(d, locked.Tx)
 		if err != nil {
 			return err
 		}
-		return locked.Conn.Commit()
+		err = locked.Tx.Commit()
+		return err
 	})
 	if err != nil {
 		return diag.FromErr(err)
@@ -120,7 +122,7 @@ func delete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.
 	return nil
 }
 
-func deleteData(d internal.Data, c *exasol.Conn) error {
+func deleteData(d internal.Data, tx *sql.Tx) error {
 
 	name, err := argument.Name(d)
 	if err != nil {
@@ -128,7 +130,7 @@ func deleteData(d internal.Data, c *exasol.Conn) error {
 	}
 
 	stmt := fmt.Sprintf("DROP USER %s", name)
-	_, err = c.Execute(stmt)
+	_, err = tx.Exec(stmt)
 	if err != nil {
 		return err
 	}
@@ -139,16 +141,16 @@ func deleteData(d internal.Data, c *exasol.Conn) error {
 
 func imp(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
-	err := importData(d, locked.Conn)
+	err := importData(ctx, d, locked.Tx)
 	if err != nil {
 		return nil, err
 	}
 	return []*schema.ResourceData{d}, nil
 }
 
-func importData(d internal.Data, c internal.Conn) error {
+func importData(ctx context.Context, d internal.Data, tx *sql.Tx) error {
 	name := d.Id()
 	if name == "" {
 		return errors.New("import expects id to be set")
@@ -158,7 +160,7 @@ func importData(d internal.Data, c internal.Conn) error {
 		return err
 	}
 
-	err = readData(d, c)
+	err = readData(ctx, d, tx)
 	if errors.Is(err, db.ErrorNamedObjectNotFound) {
 		return fmt.Errorf("could not find User %s", name)
 	}
@@ -167,34 +169,37 @@ func importData(d internal.Data, c internal.Conn) error {
 
 func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
-	err := readData(d, locked.Conn)
+	err := readData(ctx, d, locked.Tx)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	return nil
 }
 
-func readData(d internal.Data, c internal.Conn) error {
+func readData(ctx context.Context, d internal.Data, tx *sql.Tx) error {
 	name, err := argument.Name(d)
 	if err != nil {
 		return err
 	}
 
-	res, err := c.FetchSlice("SELECT DISTINGUISHED_NAME, KERBEROS_PRINCIPAL FROM EXA_DBA_USERS WHERE UPPER(USER_NAME) = UPPER(?)", []interface{}{
-		name,
-	}, "SYS")
+	res, err := tx.QueryContext(ctx, "SELECT DISTINGUISHED_NAME, KERBEROS_PRINCIPAL FROM SYS.EXA_DBA_USERS WHERE UPPER(USER_NAME) = UPPER(?)", name)
 	if err != nil {
 		return err
 	}
 
-	if len(res) == 0 {
+	if !res.Next() {
 		return db.ErrorNamedObjectNotFound
 	}
 
-	ldapIf := res[0][0]
-	kerberosIf := res[0][1]
+	var ldapIf interface{}
+	var kerberosIf interface{}
+
+	err = res.Scan(&ldapIf, &kerberosIf)
+	if err != nil {
+		return err
+	}
 	if ldapIf != nil {
 		err = d.Set("ldap", ldapIf.(string))
 		if err != nil {
@@ -231,13 +236,14 @@ func readData(d internal.Data, c internal.Conn) error {
 func update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
 	err := globallock.RunAndRetryRollbacks(func() error {
-		locked := c.Lock()
+		locked := c.Lock(ctx)
 		defer locked.Unlock()
-		err := updateData(d, locked.Conn)
+		err := updateData(ctx, d, locked.Tx)
 		if err != nil {
 			return err
 		}
-		return locked.Conn.Commit()
+		err = locked.Tx.Commit()
+		return err
 	})
 	if err != nil {
 		return diag.FromErr(err)
@@ -245,16 +251,16 @@ func update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.
 	return nil
 }
 
-func updateData(d internal.Data, c *exasol.Conn) error {
+func updateData(ctx context.Context, d internal.Data, tx *sql.Tx) error {
 
 	if d.HasChange("name") {
 		old, new := d.GetChange("name")
 
-		err := db.RenameGlobal(c, "USER", old.(string), new.(string))
+		err := db.RenameGlobal(tx, "USER", old.(string), new.(string))
 		if err != nil {
 			return err
 		}
 	}
 
-	return readData(d, c)
+	return readData(ctx, d, tx)
 }

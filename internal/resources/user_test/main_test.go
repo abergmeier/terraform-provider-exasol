@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
-	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/exasol/exasol-driver-go"
 )
 
 var (
-	exaConf exasol.ConnConf
+	exaConf *exasol.DSNConfig
 )
 
 func TestMain(m *testing.M) {

@@ -1,6 +1,8 @@
 package computed
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
@@ -9,28 +11,36 @@ import (
 
 // ReadConnection reads all attributes from Database.
 // Will return EmptyConnectionName for empty name
-func ReadConnection(d internal.Data, c internal.Conn) error {
+func ReadConnection(ctx context.Context, d internal.Data, tx *sql.Tx) error {
 
 	name, err := argument.Name(d)
 	if err != nil {
 		return err
 	}
 
-	res, err := c.FetchSlice("SELECT CONNECTION_STRING, USER_NAME, CREATED FROM EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", []interface{}{
-		name,
-	}, "SYS")
+	r, err := tx.QueryContext(ctx, "SELECT CONNECTION_STRING, USER_NAME, CREATED FROM SYS.EXA_DBA_CONNECTIONS WHERE UPPER(CONNECTION_NAME) = UPPER(?)", name)
 	if err != nil {
 		return err
 	}
 
-	if len(res) == 0 {
-		return fmt.Errorf("Connection %s not found in Database", name)
+	if !r.Next() {
+		return fmt.Errorf("connection %s not found in Database", name)
 	}
 
-	err = d.Set("to", res[0][0].(string))
+	var to string
+	var username interface{}
+	var created interface{}
+	err = r.Scan(&to, &username, &created)
 	if err != nil {
 		return err
 	}
-	username, _ := res[0][1].(string)
-	return d.Set("username", username)
+	err = d.Set("to", to)
+	if err != nil {
+		return err
+	}
+	if username == nil {
+		return d.Set("username", "")
+	} else {
+		return d.Set("username", username.(string))
+	}
 }

@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -11,12 +12,12 @@ import (
 func TestReadConnection(t *testing.T) {
 	t.Parallel()
 
-	locked := exaClient.Lock()
+	locked := exaClient.Lock(context.TODO())
 	defer locked.Unlock()
 	name := fmt.Sprintf("%s_%s", t.Name(), nameSuffix)
 
 	stmt := fmt.Sprintf("CREATE CONNECTION %s TO 'foo'", name)
-	_, err := locked.Conn.Execute(stmt)
+	_, err := locked.Tx.Exec(stmt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +28,7 @@ func TestReadConnection(t *testing.T) {
 		},
 	}
 
-	diags := readData(read, locked.Conn)
+	diags := readData(context.TODO(), read, locked.Tx)
 	if diags.HasError() {
 		t.Fatal("Unexpected error:", diags)
 	}

@@ -2,6 +2,7 @@ package table
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"reflect"
@@ -15,7 +16,6 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/pkg/computed"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/db"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/resource"
-	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -80,7 +80,7 @@ func Resource() *schema.Resource {
 		UpdateContext: update,
 		DeleteContext: delete,
 		Importer: &schema.ResourceImporter{
-			State: imp,
+			StateContext: imp,
 		},
 	}
 }
@@ -91,20 +91,21 @@ func isReplaceFalse(ctx context.Context, d *schema.ResourceDiff, meta interface{
 
 func create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
 	ra, diags := argument.ExtractRequiredArguments(d)
 	if diags.HasError() {
 		return diags
 	}
-	diags = append(diags, diag.FromErr(createData(d, locked.Conn, ra, false))...)
+	diags = append(diags, diag.FromErr(createData(ctx, d, locked.Tx, ra, false))...)
 	if diags.HasError() {
 		return diags
 	}
-	return append(diags, diag.FromErr(locked.Conn.Commit())...)
+	err := locked.Tx.Commit()
+	return append(diags, diag.FromErr(err)...)
 }
 
-func createData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments, replace bool) error {
+func createData(ctx context.Context, d internal.Data, tx *sql.Tx, args argument.RequiredArguments, replace bool) error {
 
 	comp := d.Get("composite")
 	like := d.Get("like")
@@ -119,23 +120,17 @@ func createData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments
 		return fmt.Errorf("Only one of composite, like or subquery may be used %#v", like)
 	}
 
-	err := createDataMutate(d, c, args.Schema, args.Name, comp, like, subquery, replace)
+	err := createDataMutate(d, tx, args.Schema, args.Name, comp, like, subquery, replace)
 	if err != nil {
 		return err
 	}
 
-	return postCreate(d, c, args.Schema, args.Name)
+	return postCreate(ctx, d, tx, args.Schema, args.Name)
 }
 
-func postCreate(d internal.Data, c *exasol.Conn, schema, name string) error {
+func postCreate(ctx context.Context, d internal.Data, tx *sql.Tx, schema, name string) error {
 
-	state, err := fetchMaterializedColumns(c, schema, name)
-	if err != nil {
-		return err
-	}
-	setMaterializedColumnHash(state, d)
-
-	tr, err := computed.ReadTable(c, schema, name)
+	tr, err := computed.ReadTable(ctx, tx, schema, name)
 	if err != nil {
 		return err
 	}
@@ -165,7 +160,7 @@ func postCreate(d internal.Data, c *exasol.Conn, schema, name string) error {
 }
 
 // createDataMutate contains the mutating part of creating a Table
-func createDataMutate(d internal.Data, c *exasol.Conn, schema, name string, comp, like, subquery interface{}, replace bool) error {
+func createDataMutate(d internal.Data, tx *sql.Tx, schema, name string, comp, like, subquery interface{}, replace bool) error {
 
 	initWords := "CREATE TABLE"
 	if replace {
@@ -173,25 +168,25 @@ func createDataMutate(d internal.Data, c *exasol.Conn, schema, name string, comp
 	}
 
 	commentSuffix := ""
-	comment, ok := d.Get("comment").(string)
-	if comment != "" && ok {
+	comment, _ := d.Get("comment").(string)
+	if comment != "" {
 		commentSuffix = fmt.Sprintf(" COMMENT IS '%s'", comment)
 	}
 
 	var err error
 	if !reflect.ValueOf(comp).IsZero() {
 		cleaned := strings.Trim(comp.(string), ",\n ")
-		stmt := fmt.Sprintf("%s %s (%s)%s", initWords, name, cleaned, commentSuffix)
+		stmt := fmt.Sprintf("%s %s.%s (%s)%s", initWords, schema, name, cleaned, commentSuffix)
 		setStmtHash("composite", stmt, d)
-		_, err = c.Execute(stmt, nil, schema)
+		_, err = tx.Exec(stmt)
 	} else if !reflect.ValueOf(like).IsZero() {
-		stmt := fmt.Sprintf("%s %s LIKE %s%s", initWords, name, like.(string), commentSuffix)
+		stmt := fmt.Sprintf("%s %s.%s LIKE %s%s", initWords, schema, name, like.(string), commentSuffix)
 		setStmtHash("like", stmt, d)
-		_, err = c.Execute(stmt, nil, schema)
+		_, err = tx.Exec(stmt)
 	} else if !reflect.ValueOf(subquery).IsZero() {
-		stmt := fmt.Sprintf("%s %s AS %s%s", initWords, name, subquery.(string), commentSuffix)
+		stmt := fmt.Sprintf("%s %s.%s AS %s%s", initWords, schema, name, subquery.(string), commentSuffix)
 		setStmtHash("subquery", stmt, d)
-		_, err = c.Execute(stmt, nil, schema)
+		_, err = tx.Exec(stmt)
 	} else {
 		panic("Internal conditions wrong")
 	}
@@ -201,23 +196,24 @@ func createDataMutate(d internal.Data, c *exasol.Conn, schema, name string, comp
 
 func delete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
 	ra, diags := argument.ExtractRequiredArguments(d)
 	if diags.HasError() {
 		return diags
 	}
-	err := deleteData(d, locked.Conn, ra)
+	err := deleteData(d, locked.Tx, ra)
 	if err != nil {
 		return append(diags, diag.FromErr(err)...)
 	}
-	return append(diags, diag.FromErr(locked.Conn.Commit())...)
+	err = locked.Tx.Commit()
+	return append(diags, diag.FromErr(err)...)
 }
 
-func deleteData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) error {
+func deleteData(d internal.Data, tx *sql.Tx, args argument.RequiredArguments) error {
 
-	stmt := fmt.Sprintf("DROP TABLE %s", args.Name)
-	_, err := c.Execute(stmt, nil, args.Schema)
+	stmt := fmt.Sprintf("DROP TABLE %s.%s", args.Schema, args.Name)
+	_, err := tx.Exec(stmt)
 	if err != nil {
 		return err
 	}
@@ -226,22 +222,22 @@ func deleteData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments
 	return nil
 }
 
-func imp(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+func imp(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
-	err := importData(d, locked.Conn)
+	err := importData(ctx, d, locked.Tx)
 	if err != nil {
 		return nil, err
 	}
-	err = locked.Conn.Commit()
+	err = locked.Tx.Commit()
 	if err != nil {
 		return nil, err
 	}
 	return []*schema.ResourceData{d}, nil
 }
 
-func importData(d internal.Data, c *exasol.Conn) error {
+func importData(ctx context.Context, d internal.Data, tx *sql.Tx) error {
 	id := d.Id()
 
 	m, err := resource.GetMetaFromQNDefault(id, d.Get("schema").(string))
@@ -262,7 +258,7 @@ func importData(d internal.Data, c *exasol.Conn) error {
 		return err
 	}
 
-	tr, err := computed.ReadTable(c, m.Schema, m.ObjectName)
+	tr, err := computed.ReadTable(ctx, tx, m.Schema, m.ObjectName)
 	if err != nil {
 		return err
 	}
@@ -292,23 +288,23 @@ func importData(d internal.Data, c *exasol.Conn) error {
 		}
 	}
 
-	return postCreate(d, c, m.Schema, m.ObjectName)
+	return postCreate(ctx, d, tx, m.Schema, m.ObjectName)
 }
 
 func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
 	ra, diags := argument.ExtractRequiredArguments(d)
 	if diags.HasError() {
 		return diags
 	}
-	return append(diags, readData(d, locked.Conn, ra)...)
+	return append(diags, readData(ctx, d, locked.Tx, ra)...)
 }
 
-func readData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) diag.Diagnostics {
+func readData(ctx context.Context, d internal.Data, tx *sql.Tx, args argument.RequiredArguments) diag.Diagnostics {
 
-	tr, err := computed.ReadTable(c, args.Schema, args.Name)
+	tr, err := computed.ReadTable(ctx, tx, args.Schema, args.Name)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -364,25 +360,26 @@ func readData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) 
 
 func update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
 	ra, diags := argument.ExtractRequiredArguments(d)
 	if diags.HasError() {
 		return diags
 	}
-	diags = append(diags, updateData(d, locked.Conn, ra)...)
+	diags = append(diags, updateData(ctx, d, locked.Tx, ra)...)
 	if diags.HasError() {
 		return diags
 	}
-	return append(diags, diag.FromErr(locked.Conn.Commit())...)
+	err := locked.Tx.Commit()
+	return append(diags, diag.FromErr(err)...)
 }
 
-func updateData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) diag.Diagnostics {
+func updateData(ctx context.Context, d internal.Data, tx *sql.Tx, args argument.RequiredArguments) diag.Diagnostics {
 
 	if d.HasChange("name") {
 		old, new := d.GetChange("name")
 
-		err := db.Rename(c, "TABLE", old.(string), new.(string), args.Schema)
+		err := db.Rename(tx, "TABLE", old.(string), new.(string), args.Schema)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -390,7 +387,7 @@ func updateData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments
 
 	replaceNecessary := d.HasChange("composite") || d.HasChange("subquery") || d.HasChange("like")
 	if replaceNecessary {
-		err := createData(d, c, argument.RequiredArguments{
+		err := createData(ctx, d, tx, argument.RequiredArguments{
 			Schema: args.Schema,
 			Name:   d.Get("name").(string),
 		}, true)
@@ -398,7 +395,7 @@ func updateData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments
 			return diag.FromErr(err)
 		}
 	} else if d.HasChange("comment") {
-		err := db.Comment(c, "TABLE", d.Get("name").(string), d.Get("comment").(string), args.Schema)
+		err := db.Comment(tx, "TABLE", d.Get("name").(string), d.Get("comment").(string), args.Schema)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -416,33 +413,6 @@ func countEmpty(elems ...interface{}) int {
 		}
 	}
 	return i
-}
-
-func fetchMaterializedColumns(c *exasol.Conn, schema, table string) ([][]interface{}, error) {
-	stmt := `SELECT COLUMN_OBJECT_TYPE, COLUMN_NAME, COLUMN_TYPE,
-COLUMN_TYPE_ID, COLUMN_MAXSIZE, COLUMN_NUM_PREC, COLUMN_NUM_SCALE,
-COLUMN_IS_VIRTUAL, COLUMN_IS_NULLABLE, COLUMN_IS_DISTRIBUTION_KEY, COLUMN_PARTITION_KEY_ORDINAL_POSITION, COLUMN_DEFAULT,
-COLUMN_IDENTITY FROM EXA_ALL_COLUMNS WHERE UPPER(COLUMN_SCHEMA) = UPPER(?) AND UPPER(COLUMN_TABLE) = UPPER(?) ORDER BY COLUMN_ORDINAL_POSITION`
-
-	res, err := c.FetchSlice(stmt, []interface{}{
-		schema,
-		table,
-	}, "SYS")
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
-}
-
-func setMaterializedColumnHash(res [][]interface{}, d internal.Data) {
-	columnHash, err := internal.HashUnknown(res...)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		// ignore error
-	}
-
-	d.Set("hash_columns", string(columnHash))
 }
 
 func setStmtHash(variant, stmt string, d internal.Data) {

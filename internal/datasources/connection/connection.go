@@ -2,12 +2,12 @@ package connection
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/computed"
-	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -37,14 +37,14 @@ func Resource() *schema.Resource {
 
 func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
-	return readData(d, locked.Conn)
+	return readData(ctx, d, locked.Tx)
 }
 
-func readData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
+func readData(ctx context.Context, d internal.Data, tx *sql.Tx) diag.Diagnostics {
 
-	err := computed.ReadConnection(d, c)
+	err := computed.ReadConnection(ctx, d, tx)
 	if err != nil {
 		return diag.FromErr(err)
 	}

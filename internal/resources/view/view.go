@@ -2,6 +2,7 @@ package view
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 
 	"errors"
@@ -12,7 +13,6 @@ import (
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/computed"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/resource"
-	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -81,13 +81,9 @@ func Resource() *schema.Resource {
 		UpdateContext: update,
 		DeleteContext: delete,
 		Importer: &schema.ResourceImporter{
-			State: imp,
+			StateContext: imp,
 		},
 	}
-}
-
-func isReplaceFalse(ctx context.Context, d *schema.ResourceDiff, meta interface{}) bool {
-	return !d.Get("replace").(bool)
 }
 
 type RequiredCreateArguments struct {
@@ -115,17 +111,18 @@ func requiredCreateArguments(d *schema.ResourceData) (RequiredCreateArguments, d
 
 func create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
 	ca, diags := requiredCreateArguments(d)
 	if diags.HasError() {
 		return diags
 	}
-	diags = append(diags, createData(d, locked.Conn, ca, false)...)
+	diags = append(diags, createData(ctx, d, locked.Tx, ca, false)...)
 	if diags.HasError() {
 		return diags
 	}
-	return diag.FromErr(locked.Conn.Commit())
+	err := locked.Tx.Commit()
+	return diag.FromErr(err)
 }
 
 func appendColumns(columns []statements.ViewColumn, d internal.Data) []statements.ViewColumn {
@@ -150,7 +147,7 @@ func appendColumns(columns []statements.ViewColumn, d internal.Data) []statement
 	return columns
 }
 
-func createData(d internal.Data, c *exasol.Conn, args RequiredCreateArguments, replace bool) diag.Diagnostics {
+func createData(ctx context.Context, d *schema.ResourceData, tx *sql.Tx, args RequiredCreateArguments, replace bool) diag.Diagnostics {
 
 	diags := diag.Diagnostics{}
 	comment, _ := argument.GetOkAsString(d, "comment")
@@ -167,7 +164,7 @@ func createData(d internal.Data, c *exasol.Conn, args RequiredCreateArguments, r
 		Replace:  replace,
 	}
 
-	err := cv.Execute(c)
+	err := cv.Execute(ctx, tx)
 	if err != nil {
 		return append(diags, diag.FromErr(err)...)
 	}
@@ -178,26 +175,27 @@ func createData(d internal.Data, c *exasol.Conn, args RequiredCreateArguments, r
 
 func delete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
 	ra, diags := argument.ExtractRequiredArguments(d)
 	if diags.HasError() {
 		return diags
 	}
-	diags = append(diags, deleteData(d, locked.Conn, ra)...)
+	diags = append(diags, deleteData(d, locked.Tx, ra)...)
 	if diags.HasError() {
 		return diags
 	}
-	return append(diags, diag.FromErr(locked.Conn.Commit())...)
+	err := locked.Tx.Commit()
+	return append(diags, diag.FromErr(err)...)
 }
 
-func deleteData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) diag.Diagnostics {
+func deleteData(d *schema.ResourceData, tx *sql.Tx, args argument.RequiredArguments) diag.Diagnostics {
 
 	dv := statements.DropView{
 		Schema: args.Schema,
 		Name:   args.Name,
 	}
-	err := dv.Execute(c)
+	err := dv.Execute(tx)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -205,22 +203,22 @@ func deleteData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments
 	return nil
 }
 
-func imp(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+func imp(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
-	err := importData(d, locked.Conn)
+	err := importData(ctx, d, locked.Tx)
 	if err != nil {
 		return nil, err
 	}
-	err = locked.Conn.Commit()
+	err = locked.Tx.Commit()
 	if err != nil {
 		return nil, err
 	}
 	return []*schema.ResourceData{d}, nil
 }
 
-func importData(d internal.Data, c *exasol.Conn) error {
+func importData(ctx context.Context, d *schema.ResourceData, tx *sql.Tx) error {
 	id := d.Id()
 
 	m, err := resource.GetMetaFromQNDefault(id, d.Get("schema").(string))
@@ -241,7 +239,7 @@ func importData(d internal.Data, c *exasol.Conn) error {
 		return err
 	}
 
-	tv, err := computed.ReadView(c, m.Schema, m.ObjectName)
+	tv, err := computed.ReadView(ctx, tx, m.Schema, m.ObjectName)
 	if err != nil {
 		return err
 	}
@@ -257,18 +255,18 @@ func importData(d internal.Data, c *exasol.Conn) error {
 
 func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
 	ra, diags := argument.ExtractRequiredArguments(d)
 	if diags.HasError() {
 		return diags
 	}
-	return readData(d, locked.Conn, ra)
+	return readData(ctx, d, locked.Tx, ra)
 }
 
-func readData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) diag.Diagnostics {
+func readData(ctx context.Context, d *schema.ResourceData, tx *sql.Tx, args argument.RequiredArguments) diag.Diagnostics {
 
-	tr, err := computed.ReadView(c, args.Schema, args.Name)
+	tr, err := computed.ReadView(ctx, tx, args.Schema, args.Name)
 	if errors.Is(err, computed.ReadViewNoResultError) {
 		d.SetId("")
 		return nil
@@ -296,25 +294,26 @@ func readData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) 
 
 func update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
 	ra, diags := argument.ExtractRequiredArguments(d)
 	if diags.HasError() {
 		return diags
 	}
-	diags = append(diags, updateData(d, locked.Conn, ra)...)
+	diags = append(diags, updateData(ctx, d, locked.Tx, ra)...)
 	if diags.HasError() {
 		return diags
 	}
-	return append(diags, diag.FromErr(locked.Conn.Commit())...)
+	err := locked.Tx.Commit()
+	return append(diags, diag.FromErr(err)...)
 }
 
-func updateData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) diag.Diagnostics {
+func updateData(ctx context.Context, d *schema.ResourceData, tx *sql.Tx, args argument.RequiredArguments) diag.Diagnostics {
 
 	var diags diag.Diagnostics
 	replaceNecessary := d.HasChange("column") || d.HasChange("comment") || d.HasChange("subquery")
 	if replaceNecessary {
-		diags = createData(d, c, RequiredCreateArguments{
+		diags = createData(ctx, d, tx, RequiredCreateArguments{
 			RequiredArguments: args,
 			subquery:          d.Get("subquery").(string),
 		}, true)

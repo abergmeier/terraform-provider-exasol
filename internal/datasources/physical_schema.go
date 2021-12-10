@@ -2,11 +2,11 @@ package datasources
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
-	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -26,22 +26,20 @@ func PhysicalSchema() *schema.Resource {
 
 func readPhysicalSchema(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
-	return readPhysicalSchemaData(d, locked.Conn)
+	return readPhysicalSchemaData(ctx, d, locked.Tx)
 }
 
-func readPhysicalSchemaData(d internal.Data, c *exasol.Conn) diag.Diagnostics {
+func readPhysicalSchemaData(ctx context.Context, d internal.Data, tx *sql.Tx) diag.Diagnostics {
 	name := d.Get("name").(string)
 
-	res, err := c.FetchSlice("SELECT SCHEMA_NAME FROM EXA_ALL_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = FALSE ", []interface{}{
-		name,
-	}, "SYS")
+	res, err := tx.QueryContext(ctx, "SELECT SCHEMA_NAME FROM SYS.EXA_ALL_SCHEMAS WHERE UPPER(SCHEMA_NAME) = UPPER(?) AND SCHEMA_IS_VIRTUAL = FALSE ", name)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	if len(res) == 0 {
+	if !res.Next() {
 		return diag.Errorf("Schema %s not found", name)
 	}
 

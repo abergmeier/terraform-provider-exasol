@@ -1,9 +1,8 @@
 package statements
 
 import (
+	"database/sql"
 	"fmt"
-
-	"github.com/grantstreetgroup/go-exasol-client"
 )
 
 type DropView struct {
@@ -11,8 +10,8 @@ type DropView struct {
 	Name   string
 }
 
-func (s *DropView) Execute(c *exasol.Conn) error {
-	stmt := fmt.Sprintf("DROP VIEW %s", s.Name)
-	_, err := c.Execute(stmt, nil, s.Schema)
+func (s *DropView) Execute(tx *sql.Tx) error {
+	stmt := fmt.Sprintf("DROP VIEW %s.%s", s.Schema, s.Name)
+	_, err := tx.Exec(stmt)
 	return err
 }

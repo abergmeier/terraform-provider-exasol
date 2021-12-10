@@ -3,20 +3,17 @@ package resourceprovider
 import (
 	"context"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/datasources"
 	dconn "github.com/abergmeier/terraform-provider-exasol/internal/datasources/connection"
 	drole "github.com/abergmeier/terraform-provider-exasol/internal/datasources/role"
 	dtable "github.com/abergmeier/terraform-provider-exasol/internal/datasources/table"
 	dview "github.com/abergmeier/terraform-provider-exasol/internal/datasources/view"
-	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/resources"
 	rconn "github.com/abergmeier/terraform-provider-exasol/internal/resources/connection"
 	rrole "github.com/abergmeier/terraform-provider-exasol/internal/resources/role"
 	rtable "github.com/abergmeier/terraform-provider-exasol/internal/resources/table"
 	ruser "github.com/abergmeier/terraform-provider-exasol/internal/resources/user"
 	rview "github.com/abergmeier/terraform-provider-exasol/internal/resources/view"
-	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -40,32 +37,33 @@ func Provider() *schema.Provider {
 		},
 		Schema: map[string]*schema.Schema{
 			"username": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("EXAUID", nil),
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"password": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Sensitive:   true,
-				DefaultFunc: schema.EnvDefaultFunc("EXAPWD", nil),
+				Type:      schema.TypeString,
+				Optional:  true,
+				Sensitive: true,
 			},
 			"host": {
-				Type:         schema.TypeString,
-				Required:     false,
-				DefaultFunc:  schema.EnvDefaultFunc("EXAHOST", nil),
-				ExactlyOneOf: []string{"host", "ip"},
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"ip": {
-				Type:         schema.TypeString,
-				Required:     false,
-				Deprecated:   "Attribute ip is deprecated. Use host instead.",
-				ExactlyOneOf: []string{"host", "ip"},
+				Type:       schema.TypeString,
+				Optional:   true,
+				Deprecated: "Attribute ip is deprecated. Use host instead.",
 			},
 			"port": {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  8563,
+			},
+			"dsn": {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"username", "password", "host", "ip"},
+				ExactlyOneOf:  []string{"host", "ip", "dsn"},
 			},
 		},
 	}
@@ -81,21 +79,4 @@ func Provider() *schema.Provider {
 		return m, diag.FromErr(err)
 	}
 	return provider
-}
-
-func providerConfigure(d internal.Data) (interface{}, error) {
-
-	host := d.Get("ip")
-	if host == nil {
-		host = d.Get("host")
-	}
-
-	conf := exasol.ConnConf{
-		Host:     host.(string),
-		Port:     uint16(d.Get("port").(int)),
-		Username: d.Get("username").(string),
-		Password: d.Get("password").(string),
-	}
-
-	return exaprovider.NewClient(conf), nil
 }

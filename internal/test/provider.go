@@ -1,13 +1,14 @@
 package test
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
-	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/resourceprovider"
-	"github.com/grantstreetgroup/go-exasol-client"
+	"github.com/exasol/exasol-driver-go"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -41,23 +42,21 @@ type ObjectTest struct {
 	Config       string
 }
 
-func HCLProviderFromConf(conf exasol.ConnConf) string {
+func HCLProviderFromConf(dsn *exasol.DSNConfig) string {
 	return fmt.Sprintf(`provider "exasol" {
-		ip       = "%s"
-		username = "%s"
-		password = "%s"
-	}`, conf.Host, conf.Username, conf.Password)
+	dsn = "%s"
+}`, dsn.String())
 }
 
-func False(p *schema.Provider, cb func(internal.Conn) (bool, error)) resource.TestCheckFunc {
+func False(p *schema.Provider, cb func(*sql.Tx) (bool, error)) resource.TestCheckFunc {
 
 	return func(state *terraform.State) error {
 
 		c := p.Meta().(*exaprovider.Client)
-		locked := c.Lock()
+		locked := c.Lock(context.TODO())
 		defer locked.Unlock()
 
-		t, err := cb(locked.Conn)
+		t, err := cb(locked.Tx)
 		if err != nil {
 			return err
 		}
@@ -70,15 +69,15 @@ func False(p *schema.Provider, cb func(internal.Conn) (bool, error)) resource.Te
 	}
 }
 
-func True(p *schema.Provider, cb func(internal.Conn) (bool, error)) resource.TestCheckFunc {
+func True(p *schema.Provider, cb func(*sql.Tx) (bool, error)) resource.TestCheckFunc {
 
 	return func(state *terraform.State) error {
 
 		c := p.Meta().(*exaprovider.Client)
-		locked := c.Lock()
+		locked := c.Lock(context.TODO())
 		defer locked.Unlock()
 
-		t, err := cb(locked.Conn)
+		t, err := cb(locked.Tx)
 		if err != nil {
 			return err
 		}

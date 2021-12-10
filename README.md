@@ -53,8 +53,3 @@ To test call
 ```
 EXAHOST=<exasolserver> scripts/test.sh.
 ```
-
-## Credits
-
-This provider was made possible due to the following shoulders: https://github.com/GrantStreetGroup/go-exasol-client
-Cheers

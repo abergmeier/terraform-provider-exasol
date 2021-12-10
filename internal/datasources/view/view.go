@@ -2,13 +2,13 @@ package view
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
 	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/argument"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/computed"
 	"github.com/abergmeier/terraform-provider-exasol/pkg/resource"
-	"github.com/grantstreetgroup/go-exasol-client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -48,18 +48,18 @@ func Resource() *schema.Resource {
 
 func read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	c := meta.(*exaprovider.Client)
-	locked := c.Lock()
+	locked := c.Lock(ctx)
 	defer locked.Unlock()
 	ra, diags := argument.ExtractRequiredArguments(d)
 	if diags.HasError() {
 		return diags
 	}
-	return readData(d, locked.Conn, ra)
+	return readData(ctx, d, locked.Tx, ra)
 }
 
-func readData(d internal.Data, c *exasol.Conn, args argument.RequiredArguments) diag.Diagnostics {
+func readData(ctx context.Context, d internal.Data, tx *sql.Tx, args argument.RequiredArguments) diag.Diagnostics {
 
-	vr, err := computed.ReadView(c, args.Schema, args.Name)
+	vr, err := computed.ReadView(ctx, tx, args.Schema, args.Name)
 	if err != nil {
 		return diag.FromErr(err)
 	}

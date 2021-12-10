@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/abergmeier/terraform-provider-exasol/internal/exaprovider"
 	"github.com/abergmeier/terraform-provider-exasol/internal/test"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccExasolSchema_basic(t *testing.T) {
-	locked := exaClient.Lock()
+	locked := exaprovider.TestLock(t, exaClient)
 	defer locked.Unlock()
 
 	ps := test.NewDefaultAccProviders()
@@ -25,7 +26,7 @@ func TestAccExasolSchema_basic(t *testing.T) {
 data "exasol_physical_schema" "dummy" {
 	name = "%s"
 }
-`, test.HCLProviderFromConf(locked.Conn.Conf), schemaName),
+`, test.HCLProviderFromConf(locked.Conf), schemaName),
 				Check: resource.ComposeTestCheckFunc(
 					testName("data.exasol_physical_schema.dummy"),
 				),

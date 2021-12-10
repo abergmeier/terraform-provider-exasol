@@ -1,6 +1,7 @@
 package schema_test
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -28,17 +29,17 @@ func testRun(m *testing.M) int {
 	exaClient = internal.MustCreateTestClient()
 
 	func() {
-		locked := exaClient.Lock()
+		locked := exaClient.Lock(context.TODO())
 		defer locked.Unlock()
-		locked.Conn.Execute(fmt.Sprintf("CREATE SCHEMA %s", schemaName))
-		db.MustCommit(locked.Conn)
+		locked.Tx.Exec(fmt.Sprintf("CREATE SCHEMA %s", schemaName))
+		db.MustCommit(locked.Tx)
 	}()
 
 	defer func() {
-		locked := exaClient.Lock()
+		locked := exaClient.Lock(context.TODO())
 		defer locked.Unlock()
-		locked.Conn.Execute(fmt.Sprintf("DROP SCHEMA %s CASCADE", schemaName))
-		locked.Conn.Commit()
+		locked.Tx.Exec(fmt.Sprintf("DROP SCHEMA %s CASCADE", schemaName))
+		locked.Tx.Commit()
 	}()
 
 	return m.Run()
