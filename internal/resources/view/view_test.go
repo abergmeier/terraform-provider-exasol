@@ -203,7 +203,9 @@ func TestUpdate(t *testing.T) {
 	}
 	diags := createData(create, locked.Conn, RequiredCreateArguments{
 		RequiredArguments: args,
-		subquery:          "SELECT COLUMN_SCHEMA FROM SYS.EXA_ALL_COLUMNS",
+		subquery: `SELECT COLUMN_SCHEMA
+FROM SYS.EXA_ALL_COLUMNS
+`,
 	}, false)
 	if diags.HasError() {
 		t.Fatal("Unexpected error:", diags)
@@ -217,7 +219,9 @@ func TestUpdate(t *testing.T) {
 		t.Fatal("Unexpected error:", diags)
 	}
 
-	if read.Get("subquery").(string) != "SELECT COLUMN_SCHEMA FROM SYS.EXA_ALL_COLUMNS" {
+	if read.Get("subquery").(string) != `SELECT COLUMN_SCHEMA
+FROM SYS.EXA_ALL_COLUMNS
+` {
 		t.Fatal("Unexpected subquery:", read.Get("subquery").(string))
 	}
 

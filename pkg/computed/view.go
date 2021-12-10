@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	columnReg             = regexp.MustCompile(`CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?\s+\((.*)\)\s+AS`)
-	subqueryReg           = regexp.MustCompile(`CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?AS\s+(.*)(?:\s+COMMENT\s+IS.*)?`)
+	columnReg             = regexp.MustCompile(`(?s)CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?\s+\((.*)\)\s+AS`)
+	subqueryReg           = regexp.MustCompile(`(?s)CREATE\s+(?:OR\s+REPLACE|FORCE)?\s?VIEW\s+.*?AS\s+(.*)(?:\s+COMMENT\s+IS.*)?`)
 	ReadViewNoResultError = &readViewNoResultError{}
 )
 
