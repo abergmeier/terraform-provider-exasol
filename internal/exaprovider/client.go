@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"testing"
 
 	"database/sql"
@@ -23,6 +24,18 @@ type Locked struct {
 }
 
 func NewClient(conf *exasol.DSNConfig) *Client {
+	if conf.ClientName == "" {
+		conf.ClientName = "Terraform"
+	}
+	if conf.ClientVersion == "" {
+		info, _ := debug.ReadBuildInfo()
+		if info != nil {
+			conf.ClientVersion = info.Main.Version
+			/*
+				info.["gitrevision"]
+			*/
+		}
+	}
 	c := &Client{
 		conf: conf,
 	}
@@ -31,7 +44,11 @@ func NewClient(conf *exasol.DSNConfig) *Client {
 }
 
 func (c *Client) Lock(ctx context.Context) *Locked {
-	db, err := sql.Open("exasol", c.conf.Autocommit(false).String())
+	// All internal logic is based on transactions and
+	// rolling back changes when these fail so disable
+	// autocommit
+	*c.conf.Autocommit = false
+	db, err := sql.Open("exasol", c.conf.ToDSN())
 	if err != nil {
 		panic(err)
 	}

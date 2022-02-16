@@ -23,7 +23,17 @@ func MustCreateTestConf() *exasol.DSNConfig {
 		exaPWD = "exasol"
 	}
 
-	return exasol.NewConfig(exaUID, exaPWD).Host(exaHost).Port(8563).Autocommit(false).ValidateServerCertificate(false)
+	autocommit := false
+	validate := false
+
+	return &exasol.DSNConfig{
+		User:                      exaUID,
+		Password:                  exaPWD,
+		Host:                      exaHost,
+		Port:                      8563,
+		Autocommit:                &autocommit,
+		ValidateServerCertificate: &validate,
+	}
 	//LogLevel: "debug",
 }
 

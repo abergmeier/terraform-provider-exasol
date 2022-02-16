@@ -1,7 +1,6 @@
 package resourceprovider
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/abergmeier/terraform-provider-exasol/internal"
@@ -12,11 +11,9 @@ import (
 func providerConfigure(d internal.Data) (interface{}, error) {
 
 	var conf *exasol.DSNConfig
-
-	dsn := d.Get("dsn")
-	if dsn == "exa:localhost:8563;user=sys;password=exasol;autocommit=0;validateservercertificate=0" {
-		conf = exasol.NewConfig("sys", "exasol").Autocommit(false).ValidateServerCertificate(false)
-	} else if dsn == "" {
+	var err error
+	dsn := d.Get("dsn").(string)
+	if dsn == "" {
 
 		h := d.Get("ip")
 		if h == nil {
@@ -42,11 +39,17 @@ func providerConfigure(d internal.Data) (interface{}, error) {
 		}
 		port := int(d.Get("port").(int))
 
-		conf = exasol.NewConfig(username, password).Port(port).Host(host)
+		conf = &exasol.DSNConfig{
+			User:     username,
+			Password: password,
+			Port:     port,
+			Host:     host,
+		}
 	} else {
-		panic(fmt.Sprintf(`Unsupported: %s
-supported: exa:localhost:8563;user=sys;password=exasol;autocommit=0;validateservercertificate=0
-`, dsn))
+		conf, err = exasol.ParseDSN(dsn)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return exaprovider.NewClient(conf), nil

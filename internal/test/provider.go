@@ -45,7 +45,7 @@ type ObjectTest struct {
 func HCLProviderFromConf(dsn *exasol.DSNConfig) string {
 	return fmt.Sprintf(`provider "exasol" {
 	dsn = "%s"
-}`, dsn.String())
+}`, dsn.ToDSN())
 }
 
 func False(p *schema.Provider, cb func(*sql.Tx) (bool, error)) resource.TestCheckFunc {

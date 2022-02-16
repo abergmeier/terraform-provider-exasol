@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883
-	github.com/exasol/exasol-driver-go v0.2.0
+	github.com/exasol/exasol-driver-go v0.3.0
 	github.com/google/go-cmp v0.5.6
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.10.0
 	github.com/pkg/errors v0.9.1
@@ -18,7 +18,7 @@ require (
 	github.com/exasol/error-reporting-go v0.1.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-checkpoint v0.5.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
